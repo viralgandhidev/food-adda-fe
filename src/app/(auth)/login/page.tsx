@@ -10,10 +10,13 @@ import { useAuthStore } from "@/store/auth";
 import { authService } from "@/services/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useState } from "react";
+import { AxiosError } from "axios";
 
 export default function LoginPage() {
   const router = useRouter();
   const setAuth = useAuthStore((state) => state.setAuth);
+  const [loginError, setLoginError] = useState<string>("");
 
   const {
     register,
@@ -25,11 +28,29 @@ export default function LoginPage() {
 
   const onSubmit = async (data: LoginInput) => {
     try {
+      setLoginError("");
       const response = await authService.login(data);
+      // Store token in localStorage for API requests
+      localStorage.setItem("token", response.token);
+      // Update auth store
       setAuth(response.user, response.token);
-      router.push("/");
+      router.replace("/dashboard");
     } catch (error) {
       console.error("Login failed:", error);
+      if (error instanceof AxiosError) {
+        if (error.response?.status === 401) {
+          setLoginError("Invalid email or password");
+        } else if (error.response?.status === 500) {
+          setLoginError("Something went wrong. Please try again later.");
+        } else {
+          setLoginError(
+            error.response?.data?.message || "An error occurred during login"
+          );
+        }
+      } else {
+        setLoginError("An unexpected error occurred. Please try again.");
+      }
+      return;
     }
   };
 
@@ -63,7 +84,19 @@ export default function LoginPage() {
             </p>
           </div>
 
-          <form className="space-y-8" onSubmit={handleSubmit(onSubmit)}>
+          {loginError && (
+            <div className="rounded-md bg-red-50 p-4 mb-3">
+              <p className="text-sm text-red-600">{loginError}</p>
+            </div>
+          )}
+
+          <form
+            className="space-y-8"
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSubmit(onSubmit)(e);
+            }}
+          >
             <div className="space-y-3">
               <div>
                 {/* <label

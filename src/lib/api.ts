@@ -5,9 +5,12 @@ const baseURL =
 
 export const api = axios.create({
   baseURL,
-  headers: {
-    "Content-Type": "application/json",
-  },
+  // Do NOT set Content-Type here; let axios/browser set it automatically for FormData
+});
+
+export const apiMultipart = axios.create({
+  baseURL,
+  headers: { "Content-Type": "multipart/form-data" },
 });
 
 // Request interceptor for adding auth token

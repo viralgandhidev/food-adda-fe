@@ -2,37 +2,27 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 export function middleware(request: NextRequest) {
-  const token = request.cookies.get("token");
   const { pathname } = request.nextUrl;
 
-  // Public paths that don't require authentication
-  const publicPaths = ["/login", "/signup"];
-  const isPublicPath = publicPaths.includes(pathname);
-
-  // If the path is public and user is authenticated, redirect to home
-  if (isPublicPath && token) {
-    return NextResponse.redirect(new URL("/", request.url));
+  // For API routes, let them handle their own authentication
+  if (pathname.startsWith("/api")) {
+    return NextResponse.next();
   }
 
-  // If the path is not public and user is not authenticated, redirect to login
-  if (!isPublicPath && !token) {
-    return NextResponse.redirect(new URL("/login", request.url));
+  // For static files and images, allow access
+  if (
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/static") ||
+    pathname.includes(".")
+  ) {
+    return NextResponse.next();
   }
 
+  // For all other routes, let the client-side handle authentication
   return NextResponse.next();
 }
 
 // Configure which paths the middleware should run on
 export const config = {
-  matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public files (images, etc.)
-     */
-    "/((?!api|_next/static|_next/image|favicon.ico|auth-image.png|google.svg|facebook.svg|window.svg|vercel.svg|next.svg|globe.svg|file.svg).*)",
-  ],
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
 };
