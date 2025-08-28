@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect } from "react";
 import { FiEdit } from "react-icons/fi";
 import { useForm, FieldValues } from "react-hook-form";
@@ -59,7 +61,7 @@ const ProductDetailsPage = () => {
   };
 
   // Use uploading state in the form
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (_e: React.ChangeEvent<HTMLInputElement>) => {
     setUploading(true);
     // Handle file upload logic here
     setUploading(false);
@@ -97,7 +99,7 @@ const ProductDetailsPage = () => {
                     <Input
                       {...register("name")}
                       placeholder="Product name"
-                      error={errors.name?.message}
+                      error={errors.name?.message as string}
                       className="h-12 focus:ring-2 focus:ring-yellow-300"
                     />
                   </div>
@@ -115,7 +117,7 @@ const ProductDetailsPage = () => {
                     </select>
                     {errors.category_id && (
                       <p className="text-sm text-red-500 mt-1">
-                        {errors.category_id.message}
+                        {errors.category_id.message as string}
                       </p>
                     )}
                   </div>
@@ -124,7 +126,7 @@ const ProductDetailsPage = () => {
                       {...register("price")}
                       type="number"
                       placeholder="Price"
-                      error={errors.price?.message}
+                      error={errors.price?.message as string}
                       className="h-12 focus:ring-2 focus:ring-yellow-300"
                     />
                   </div>
@@ -133,7 +135,7 @@ const ProductDetailsPage = () => {
                       {...register("preparation_time")}
                       type="number"
                       placeholder="Preparation time (min)"
-                      error={errors.preparation_time?.message}
+                      error={errors.preparation_time?.message as string}
                       className="h-12 focus:ring-2 focus:ring-yellow-300"
                     />
                   </div>
@@ -158,7 +160,7 @@ const ProductDetailsPage = () => {
                   />
                   {errors.description && (
                     <p className="text-sm text-red-500 mt-1">
-                      {errors.description.message}
+                      {errors.description.message as string}
                     </p>
                   )}
                 </div>

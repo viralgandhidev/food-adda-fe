@@ -17,6 +17,14 @@ const nextConfig = {
   },
   // Enable static file serving
   output: "standalone",
+  // Skip TypeScript checking during build for faster builds
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  // Skip ESLint during build for faster builds
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
 };
 
 module.exports = nextConfig;

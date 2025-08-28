@@ -40,7 +40,6 @@ export default function ProductCard({
   price,
   imageUrl,
   images = [],
-  isVeg,
   brand,
   category,
 }: ProductCardProps) {
@@ -50,7 +49,6 @@ export default function ProductCard({
   const [saved, setSaved] = useState(false);
   // Hydrate saved state on mount
   // Note: ProductCard is client component; best-effort check
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useState(() => {
     authService
       .isProductSaved(id)

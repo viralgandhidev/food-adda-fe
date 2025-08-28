@@ -41,7 +41,7 @@ const productSchema = z.object({
   category_id: z.string().min(1),
   is_veg: z.boolean(),
   preparation_time: z.coerce.number().min(1),
-  images: z.array(z.any()).min(1, "At least one image is required"),
+  images: z.array(z.instanceof(File)).min(1, "At least one image is required"),
   metrics: z.array(
     z.object({ key: z.string().min(1), value: z.string().min(1) })
   ),
@@ -271,7 +271,7 @@ export default function CreateProductPage() {
                     className="h-12 focus:ring-2 focus:ring-yellow-300"
                   />
                 </div>
-                <div className="flex items-center gap-2 mt-2 md:mt-0 hidden">
+                <div className="hidden">
                   <input
                     type="checkbox"
                     {...register("is_veg")}

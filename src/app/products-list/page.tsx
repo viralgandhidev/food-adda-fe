@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import * as Slider from "@radix-ui/react-slider";
 import { useSearchParams, useRouter } from "next/navigation";
 import ProductCard from "@/components/home/ProductCard";
@@ -41,7 +41,7 @@ const sortOptions = [
   { value: "name_desc", label: "Name: Z-A" },
 ];
 
-export default function ProductsList() {
+function ProductsListContent() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -576,5 +576,13 @@ export default function ProductsList() {
         </section>
       </MainLayout>
     </ProtectedRoute>
+  );
+}
+
+export default function ProductsList() {
+  return (
+    <Suspense fallback={<div className="p-6">Loading...</div>}>
+      <ProductsListContent />
+    </Suspense>
   );
 }

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import MainLayout from "@/components/layout/MainLayout";
 import ProductCard from "@/components/home/ProductCard";
-import HeroSection from "@/components/home/HeroSection";
+
 import { api } from "@/lib/api";
 import { FiBox, FiCheckCircle, FiPackage, FiUser } from "react-icons/fi";
 import { ReactNode } from "react";
