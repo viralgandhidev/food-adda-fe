@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import { useForm, Controller, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
@@ -41,7 +43,7 @@ const productSchema = z.object({
   category_id: z.string().min(1),
   is_veg: z.boolean(),
   preparation_time: z.coerce.number().min(1),
-  images: z.array(z.instanceof(File)).min(1, "At least one image is required"),
+  images: z.array(z.any()).min(1, "At least one image is required"),
   metrics: z.array(
     z.object({ key: z.string().min(1), value: z.string().min(1) })
   ),
