@@ -1,7 +1,9 @@
+"use client";
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { authService } from "@/services/auth";
+import Link from "next/link";
 
 interface ProductImage {
   id: string;
@@ -44,6 +46,7 @@ export default function ProductCard({
   category,
 }: ProductCardProps) {
   const router = useRouter();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   // Use the first image from images array if available, else fallback
   const [imgError, setImgError] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -56,6 +59,13 @@ export default function ProductCard({
       .catch(() => {});
     return undefined as unknown as void;
   });
+  useEffect(() => {
+    try {
+      setIsLoggedIn(Boolean(localStorage.getItem("token")));
+    } catch {
+      setIsLoggedIn(false);
+    }
+  }, []);
   const displayImage =
     !imgError && images.length > 0
       ? images[0].image_url
@@ -135,7 +145,7 @@ export default function ProductCard({
           {/* Brand as a link, styled as in the design */}
           {brand && (
             <div className="mb-1">
-              <span className="text-xs text-blue-600 underline hover:text-blue-800 transition-colors cursor-pointer font-medium">
+              <span className="text-xs text-[#252C32] underline hover:text-blue-800 transition-colors cursor-pointer font-medium">
                 {brand}
               </span>
             </div>
@@ -144,9 +154,22 @@ export default function ProductCard({
             {description}
           </p>
           <div className="flex items-end justify-between mt-auto pt-2">
-            <span className="font-bold text-lg text-gray-900">
-              ₹{price.toLocaleString()}
+            <span
+              className={`font-bold text-lg text-gray-900 ${
+                !isLoggedIn ? "inline-block px-2 filter blur select-none" : ""
+              }`}
+            >
+              {typeof price === "number" ? `₹${price.toLocaleString()}` : "₹—"}
             </span>
+            {!isLoggedIn && (
+              <Link
+                href="/login"
+                className="ml-3 text-xs font-semibold text-[#181818] bg-[#F4D300] px-3 py-1 rounded-full shadow hover:bg-yellow-400 transition"
+                onClick={(e) => e.stopPropagation()}
+              >
+                Log in to view
+              </Link>
+            )}
           </div>
         </div>
       </div>

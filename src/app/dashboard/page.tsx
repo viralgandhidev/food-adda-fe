@@ -300,7 +300,7 @@ export default function DashboardPage() {
               <div className="mt-auto self-end">
                 <Link
                   href="/products/create"
-                  className="px-4 py-2 rounded-full bg-[#FFD600] text-[#181818] font-semibold shadow hover:bg-yellow-400 transition"
+                  className="px-4 py-2 rounded-full bg-[#F4D300] text-[#181818] font-semibold shadow hover:bg-yellow-400 transition"
                 >
                   + Create
                 </Link>

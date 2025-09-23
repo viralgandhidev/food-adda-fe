@@ -182,7 +182,7 @@ export default function QuoteRequestFormPage() {
                 <button
                   disabled={loading}
                   onClick={submit}
-                  className="bg-[#FFD600] text-[#181818] font-semibold px-6 py-2 rounded-full shadow hover:bg-yellow-400"
+                  className="bg-[#F4D300] text-[#181818] font-semibold px-6 py-2 rounded-full shadow hover:bg-yellow-400"
                 >
                   {loading ? "Submitting..." : "Submit"}
                 </button>

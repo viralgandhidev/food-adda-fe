@@ -212,14 +212,14 @@ export default function CreateProductPage() {
             <div className="flex items-center gap-4 mb-10">
               <Button
                 type="button"
-                className="rounded-full bg-[#FFD600] hover:bg-yellow-400 text-[#181818] font-semibold px-6 py-2 shadow transition"
+                className="rounded-full bg-[#F4D300] hover:bg-yellow-400 text-[#181818] font-semibold px-6 py-2 shadow transition"
                 onClick={() => router.back()}
               >
                 <FiArrowLeft className="mr-2" /> Back
               </Button>
               <h1 className="text-4xl font-extrabold text-[#181818] tracking-tight ml-2 relative">
                 Create Product
-                <span className="block w-16 h-1 bg-[#FFD600] rounded-full mt-2 absolute left-0 -bottom-3" />
+                <span className="block w-16 h-1 bg-[#F4D300] rounded-full mt-2 absolute left-0 -bottom-3" />
               </h1>
             </div>
             {error && (
@@ -427,7 +427,7 @@ export default function CreateProductPage() {
               </div>
               <Button
                 type="submit"
-                className="w-full h-14 text-lg font-bold bg-[#FFD600] hover:bg-yellow-400 text-[#181818] rounded-2xl shadow mt-6"
+                className="w-full h-14 text-lg font-bold bg-[#F4D300] hover:bg-yellow-400 text-[#181818] rounded-2xl shadow mt-6"
                 isLoading={isSubmitting || uploading}
               >
                 Create Product

@@ -31,7 +31,7 @@ export default function CategoryPill({
         >
           {title}
         </span>
-        <span className="inline-flex items-center gap-1 bg-[#FFD600] text-[#181818] font-semibold px-3 py-1 rounded-full text-xs w-fit mt-1 shadow-sm">
+        <span className="inline-flex items-center gap-1 bg-[#F4D300] text-[#181818] font-semibold px-3 py-1 rounded-full text-xs w-fit mt-1 shadow-sm">
           <FiBox className="mr-1" size={16} />
           {productCount} Product{productCount !== 1 ? "s" : ""}
         </span>

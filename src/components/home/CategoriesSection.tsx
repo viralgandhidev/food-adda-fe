@@ -59,7 +59,7 @@ export default function CategoriesSection({
           Explore our wide range of categories
         </h2>
         <button
-          className="bg-[#FFD600] text-[#181818] font-semibold px-7 py-2 rounded-full shadow hover:bg-yellow-400 transition text-lg w-fit"
+          className="bg-[#F4D300] text-[#181818] font-semibold px-7 py-2 rounded-full shadow hover:bg-yellow-400 transition text-lg w-fit"
           onClick={() => setShowModal(true)}
         >
           View all categories
@@ -108,7 +108,7 @@ export default function CategoriesSection({
                     >
                       {cat.name}
                     </span>
-                    <span className="inline-flex items-center gap-1 bg-[#FFD600] text-[#181818] font-semibold px-3 py-1 rounded-full text-xs w-fit mt-1 shadow-sm">
+                    <span className="inline-flex items-center gap-1 bg-[#F4D300] text-[#181818] font-semibold px-3 py-1 rounded-full text-xs w-fit mt-1 shadow-sm">
                       <FiBox className="mr-1" size={16} />
                       {cat.productCount} Product
                       {cat.productCount !== 1 ? "s" : ""}

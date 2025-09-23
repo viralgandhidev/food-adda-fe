@@ -173,7 +173,7 @@ const ProductDetailsPage = () => {
                 />
                 <Button
                   type="submit"
-                  className="w-full h-14 text-lg font-bold bg-[#FFD600] hover:bg-yellow-400 text-[#181818] rounded-2xl shadow mt-6"
+                  className="w-full h-14 text-lg font-bold bg-[#F4D300] hover:bg-yellow-400 text-[#181818] rounded-2xl shadow mt-6"
                   isLoading={isSubmitting || uploading}
                 >
                   Update Product
