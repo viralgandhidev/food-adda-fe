@@ -4,6 +4,11 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "FoodAdda",
   description: "FoodAdda",
+  icons: {
+    icon: "/logo-1.png",
+    shortcut: "/logo-1.png",
+    apple: "/logo-1.png",
+  },
 };
 
 export default function RootLayout({
