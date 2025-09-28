@@ -272,9 +272,15 @@ export default function ProductDetailsPage() {
                       : ""
                   }`}
                 >
-                  {typeof product.price === "number"
-                    ? `₹${product.price.toLocaleString()}`
-                    : "₹—"}
+                  {(() => {
+                    const n =
+                      typeof product.price === "number"
+                        ? product.price
+                        : typeof (product.price as unknown) === "string"
+                        ? Number(product.price as unknown as string)
+                        : NaN;
+                    return Number.isFinite(n) ? `₹${n.toLocaleString()}` : "₹—";
+                  })()}
                 </span>
                 {!isLoggedIn && (
                   <Link

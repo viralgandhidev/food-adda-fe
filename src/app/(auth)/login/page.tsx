@@ -60,7 +60,7 @@ export default function LoginPage() {
       <div className="hidden w-1/2 bg-[#1C1A1A] lg:block">
         <div className="flex h-full items-center justify-center">
           <Image
-            src="/auth-image.png"
+            src="/auth-img.jpg"
             alt="Food Adda"
             width={600}
             height={600}

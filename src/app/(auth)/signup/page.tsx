@@ -39,7 +39,7 @@ export default function SignupPage() {
       <div className="hidden w-1/2 bg-[#1C1A1A] lg:block">
         <div className="flex h-full items-center justify-center">
           <Image
-            src="/auth-image.png"
+            src="/auth-img.jpg"
             alt="Food Adda"
             width={600}
             height={600}
@@ -100,19 +100,7 @@ export default function SignupPage() {
                 error={errors.phone_number?.message}
                 className="h-14 text-base"
               />
-              <select
-                {...register("user_type")}
-                className="mt-1 block h-14 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-base placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#FF4B2B] focus:border-transparent"
-              >
-                <option value="">Select account type</option>
-                <option value="CONSUMER">Consumer</option>
-                <option value="SELLER">Seller</option>
-              </select>
-              {errors.user_type && (
-                <p className="mt-1 text-sm text-red-500">
-                  {errors.user_type.message}
-                </p>
-              )}
+              {/* account type removed */}
               <textarea
                 {...register("address")}
                 rows={3}

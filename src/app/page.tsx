@@ -441,9 +441,17 @@ export default function LandingPage() {
                         !isLoggedIn ? "filter blur select-none" : ""
                       }`}
                     >
-                      {typeof p.price === "number"
-                        ? `₹${p.price.toLocaleString()}`
-                        : "₹—"}
+                      {(() => {
+                        const n =
+                          typeof p.price === "number"
+                            ? p.price
+                            : typeof (p.price as unknown) === "string"
+                            ? Number(p.price as unknown as string)
+                            : NaN;
+                        return Number.isFinite(n)
+                          ? `₹${n.toLocaleString()}`
+                          : "₹—";
+                      })()}
                     </div>
                   </div>
                 </div>

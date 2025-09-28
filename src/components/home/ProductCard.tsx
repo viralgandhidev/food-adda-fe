@@ -159,7 +159,15 @@ export default function ProductCard({
                 !isLoggedIn ? "inline-block px-2 filter blur select-none" : ""
               }`}
             >
-              {typeof price === "number" ? `₹${price.toLocaleString()}` : "₹—"}
+              {(() => {
+                const n =
+                  typeof price === "number"
+                    ? price
+                    : typeof (price as unknown) === "string"
+                    ? Number(price as unknown as string)
+                    : NaN;
+                return Number.isFinite(n) ? `₹${n.toLocaleString()}` : "₹—";
+              })()}
             </span>
             {!isLoggedIn && (
               <Link
