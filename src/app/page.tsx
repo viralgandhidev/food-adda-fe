@@ -177,6 +177,15 @@ export default function LandingPage() {
       })),
     [categories, categoryDescriptions, categoryIcons]
   );
+  // Scroll to B2B/B2C section when URL hash is present
+  const b2bRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.location.hash === "#b2b-b2c" && b2bRef.current) {
+      b2bRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, []);
+
   return (
     <MainLayout>
       {/* Public Landing Hero */}
@@ -462,7 +471,11 @@ export default function LandingPage() {
       </section>
 
       {/* HoReCa + Distribution section (moved below discover products) */}
-      <section className="relative px-6 md:px-12 mt-8">
+      <section
+        id="b2b-b2c"
+        ref={b2bRef}
+        className="relative px-6 md:px-12 mt-8"
+      >
         {/* yellow band behind first card */}
         <div className="absolute inset-x-0 top-0 h-40 md:h-72 bg-[#F4D300]" />
 

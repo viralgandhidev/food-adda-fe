@@ -96,18 +96,36 @@ export default function Header() {
           </Link>
           {/* Navigation */}
           <nav className="hidden md:flex gap-8 items-center">
-            <Link
-              href="/forms/B2B"
-              className="text-[#1C1A1A] hover:text-[#F4D300] transition"
-            >
-              B2B
-            </Link>
-            <Link
-              href="/forms/B2C"
-              className="text-[#1C1A1A] hover:text-[#F4D300] transition"
-            >
-              B2C
-            </Link>
+            {isLoggedIn ? (
+              <Link
+                href="/forms/B2B"
+                className="text-[#1C1A1A] hover:text-[#F4D300] transition"
+              >
+                B2B
+              </Link>
+            ) : (
+              <Link
+                href="/#b2b-b2c"
+                className="text-[#1C1A1A] hover:text-[#F4D300] transition"
+              >
+                B2B
+              </Link>
+            )}
+            {isLoggedIn ? (
+              <Link
+                href="/forms/B2C"
+                className="text-[#1C1A1A] hover:text-[#F4D300] transition"
+              >
+                B2C
+              </Link>
+            ) : (
+              <Link
+                href="/#b2b-b2c"
+                className="text-[#1C1A1A] hover:text-[#F4D300] transition"
+              >
+                B2C
+              </Link>
+            )}
             <Link
               href="/forms/HoReCa"
               className="text-[#1C1A1A] hover:text-[#F4D300] transition"
@@ -136,12 +154,14 @@ export default function Header() {
         </div>
         {/* Dynamic Auth Buttons */}
         <div className="flex items-center gap-3">
-          <Link
-            href="#"
-            className="ml-6 px-6 py-2 rounded-full bg-[#F4D300] text-black font-semibold shadow hover:bg-yellow-400 transition"
-          >
-            Subscribe
-          </Link>
+          {isLoggedIn && (
+            <Link
+              href="#"
+              className="ml-6 px-6 py-2 rounded-full bg-[#F4D300] text-black font-semibold shadow hover:bg-yellow-400 transition"
+            >
+              Subscribe
+            </Link>
+          )}
 
           {isLoggedIn ? (
             <button
