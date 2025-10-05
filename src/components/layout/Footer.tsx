@@ -130,7 +130,7 @@ export default function Footer() {
               CONTACT
             </div>
             <div className="text-sm">
-              <div className="mb-2">info@foodadda.com</div>
+              <div className="mb-2">info@foodadda.in</div>
               <div>+91 9327228611</div>
             </div>
           </div>
