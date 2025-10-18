@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import MainLayout from "@/components/layout/MainLayout";
@@ -8,6 +8,8 @@ import ProductCard from "@/components/home/ProductCard";
 import { api } from "@/lib/api";
 import { authService } from "@/services/auth";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { FiSearch } from "react-icons/fi";
 import { FiBox, FiCheckCircle, FiPackage, FiUser } from "react-icons/fi";
 import { ReactNode } from "react";
 import CategoriesSection from "@/components/home/CategoriesSection";
@@ -73,6 +75,7 @@ const categoryIcons: Record<string, ReactNode> = {
 };
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [myProducts, setMyProducts] = useState<Product[]>([]);
@@ -98,6 +101,18 @@ export default function DashboardPage() {
     enquiries: 0,
     productsViewed: 0,
   });
+  // Global search (same behavior as home hero)
+  type ProductSuggestion = {
+    id: string;
+    name: string;
+    image_url?: string;
+    price?: number | null;
+  };
+  const [query, setQuery] = useState("");
+  const [suggestions, setSuggestions] = useState<ProductSuggestion[]>([]);
+  const [open, setOpen] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const user = useAuthStore((state) => state.user);
   const isSeller = false; // Dashboard shows generic latest products only
 
@@ -173,6 +188,54 @@ export default function DashboardPage() {
     };
     fetchData();
   }, [isSeller, user?.id]);
+
+  // Debounced suggestions
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (!query) {
+      setSuggestions([]);
+      setOpen(false);
+      return;
+    }
+    debounceRef.current = setTimeout(async () => {
+      try {
+        setSearchLoading(true);
+        const res = await api.get("/products", {
+          params: { q: query, limit: 5 },
+        });
+        const items = (res.data?.data || []) as Array<{
+          id: string;
+          name: string;
+          image_url?: string;
+          price?: number | null;
+        }>;
+        setSuggestions(
+          items.slice(0, 5).map((p) => ({
+            id: p.id,
+            name: p.name,
+            image_url: p.image_url,
+            price: p.price ?? null,
+          }))
+        );
+        setOpen(true);
+      } catch {
+        setSuggestions([]);
+        setOpen(false);
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 250);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [query]);
+
+  const onSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const params = new URLSearchParams();
+    if (query) params.set("q", query);
+    router.push(`/products-list?${params.toString()}`);
+  };
 
   const mappedCategories = categories.map((cat) => ({
     id: cat.id,
@@ -412,6 +475,84 @@ export default function DashboardPage() {
                 </div>
               )}
             </div>
+          </div>
+        </section>
+
+        {/* Global Search */}
+        <section className="px-6 md:px-12 mt-10">
+          <div className="w-full">
+            <form
+              onSubmit={onSearchSubmit}
+              className="relative flex bg-white rounded-full shadow-lg overflow-hidden border border-gray-200"
+            >
+              <span className="absolute left-5 top-1/2 -translate-y-1/2 text-[#F4D300]">
+                <FiSearch size={20} />
+              </span>
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                type="text"
+                placeholder="Search products"
+                className="flex-1 pl-12 pr-4 py-3 bg-transparent text-gray-700 placeholder-gray-400 focus:outline-none text-base font-medium border-none"
+              />
+              <button
+                type="submit"
+                className="px-6 py-3 bg-[#F4D300] text-[#181818] font-semibold text-base hover:bg-yellow-400 transition"
+              >
+                Search
+              </button>
+            </form>
+            {open && (suggestions.length > 0 || searchLoading) && (
+              <div className="relative z-20 mt-2 w-full bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
+                <ul className="max-h-80 overflow-auto">
+                  {searchLoading && (
+                    <li className="px-4 py-3 text-sm text-gray-500">
+                      Searching…
+                    </li>
+                  )}
+                  {!searchLoading &&
+                    suggestions.map((s) => (
+                      <li key={s.id} className="hover:bg-gray-50">
+                        <a
+                          href={`/product/${s.id}`}
+                          className="flex items-center gap-3 px-4 py-3"
+                          onClick={() => setOpen(false)}
+                        >
+                          <div className="w-10 h-10 rounded bg-gray-100 overflow-hidden flex items-center justify-center">
+                            <img
+                              src={s.image_url || "/images/default-product.jpg"}
+                              alt=""
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <div className="flex-1">
+                            <div className="text-sm font-medium text-gray-900">
+                              {s.name}
+                            </div>
+                            {s.price !== null && s.price !== undefined && (
+                              <div className="text-xs text-gray-500">
+                                ₹{s.price}
+                              </div>
+                            )}
+                          </div>
+                        </a>
+                      </li>
+                    ))}
+                </ul>
+                <div className="border-t border-gray-100">
+                  <button
+                    onClick={() => {
+                      const params = new URLSearchParams();
+                      if (query) params.set("q", query);
+                      router.push(`/products-list?${params.toString()}`);
+                    }}
+                    className="w-full text-center px-4 py-3 text-sm font-medium text-[#181818] hover:bg-gray-50"
+                  >
+                    View all results
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </section>
 

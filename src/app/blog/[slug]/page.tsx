@@ -104,7 +104,7 @@ export default function BlogDetail({ params }: { params: { slug: string } }) {
 
           <div className="mt-8">
             <Link
-              href="/"
+              href="/dashboard"
               className="inline-flex items-center px-5 py-2 rounded-full bg-[#F4D300] text-[#181818] font-semibold"
             >
               Back to home

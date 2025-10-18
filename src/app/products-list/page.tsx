@@ -26,10 +26,21 @@ interface Product {
   category_name?: string;
 }
 
-interface Category {
+interface Supplier {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email?: string;
+  company_name?: string;
+  total_products: number;
+}
+
+interface CategoryNode {
   id: string;
   name: string;
   product_count: number;
+  children?: CategoryNode[];
+  parent_id?: string | null;
 }
 
 const sortOptions = [
@@ -42,12 +53,26 @@ const sortOptions = [
 
 function ProductsListContent() {
   const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [categoryTree, setCategoryTree] = useState<CategoryNode[]>([]);
+  const [categoriesFlat, setCategoriesFlat] = useState<CategoryNode[]>([]);
+  const [mainCategory, setMainCategory] = useState("");
+  const [subCategory, setSubCategory] = useState("");
+  const [allKeywords, setAllKeywords] = useState<
+    { id: string; name: string }[]
+  >([]);
+  const [selectedKeywordIds, setSelectedKeywordIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const searchParams = useSearchParams();
   const router = useRouter();
+
+  const initialTab =
+    (searchParams.get("tab") as "products" | "suppliers") || "products";
+  const [activeTab, setActiveTab] = useState<"products" | "suppliers">(
+    initialTab
+  );
 
   // Filter state
   const [search, setSearch] = useState("");
@@ -69,10 +94,40 @@ function ProductsListContent() {
   const page = Number(searchParams.get("page")) || 1;
   const limit = 20;
 
-  // Fetch categories for filter
+  // Preserve current tab and existing filters while updating URL
+  const pushWithParams = (params: {
+    page?: number;
+    tab?: "products" | "suppliers";
+    mainCategoryId?: string;
+    subCategoryId?: string;
+    keywordIds?: string;
+  }) => {
+    const usp = new URLSearchParams();
+    usp.set("page", String(params.page ?? 1));
+    const tabVal = params.tab ?? activeTab;
+    if (tabVal) usp.set("tab", tabVal);
+    const mainVal = params.mainCategoryId ?? mainCategory;
+    if (mainVal) usp.set("mainCategoryId", mainVal);
+    const subVal = params.subCategoryId ?? subCategory;
+    if (subVal) usp.set("subCategoryId", subVal);
+    const kwVal =
+      params.keywordIds ??
+      (selectedKeywordIds.length ? selectedKeywordIds.join(",") : undefined);
+    if (kwVal) usp.set("keywordIds", kwVal);
+    router.push(`/products-list?${usp.toString()}`);
+  };
+
+  // Fetch categories tree for filter and all keywords
   useEffect(() => {
+    api.get("/categories/tree").then((res) => {
+      setCategoryTree(res.data.data || []);
+    });
     api.get("/categories").then((res) => {
-      setCategories(res.data.data || []);
+      setCategoriesFlat(res.data.data || []);
+    });
+    api.get("/keywords/all").then((res) => {
+      const items = (res.data?.data || []) as { id: string; name: string }[];
+      setAllKeywords(items);
     });
   }, []);
 
@@ -99,27 +154,59 @@ function ProductsListContent() {
     };
   }, [minPrice, maxPrice]);
 
+  // No longer restrict keywords by category; we load all once above
+
   // Fetch products on filter/search/page change (use debouncedSearch and debouncedMinPrice/MaxPrice)
   useEffect(() => {
-    fetchProducts();
+    if (activeTab === "products") {
+      fetchProducts();
+    } else {
+      fetchSuppliers();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     debouncedSearch,
-    category,
+    mainCategory,
+    subCategory,
+    selectedKeywordIds,
     debouncedMinPrice,
     debouncedMaxPrice,
     isVeg,
     sort,
     page,
+    activeTab,
   ]);
 
-  // Sync category state with categoryId from URL
+  // Sync category state with URL (back-compat: categoryId)
   useEffect(() => {
     const urlCategoryId = searchParams.get("categoryId") || "";
-    if (urlCategoryId !== category) {
-      setCategory(urlCategoryId);
+    const urlMain = searchParams.get("mainCategoryId") || "";
+    const urlSub = searchParams.get("subCategoryId") || "";
+    const urlKw = searchParams.get("keywordId") || ""; // back-compat
+    const urlKws = searchParams.get("keywordIds") || "";
+    if (urlMain !== mainCategory) setMainCategory(urlMain);
+    if (urlSub !== subCategory) setSubCategory(urlSub || urlCategoryId);
+    const parsed = urlKws
+      ? urlKws.split(",").filter(Boolean)
+      : urlKw
+      ? [urlKw]
+      : [];
+    // Only set if different to avoid loops
+    if (
+      parsed.length !== selectedKeywordIds.length ||
+      parsed.some((id, i) => id !== selectedKeywordIds[i])
+    ) {
+      setSelectedKeywordIds(parsed);
     }
-  }, [searchParams, category]);
+  }, [searchParams]);
+
+  // Keep tab in sync with URL
+  useEffect(() => {
+    const urlTab =
+      (searchParams.get("tab") as "products" | "suppliers") || "products";
+    if (urlTab !== activeTab) setActiveTab(urlTab);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const fetchProducts = async () => {
     try {
@@ -130,7 +217,10 @@ function ProductsListContent() {
         limit,
       };
       if (debouncedSearch) params.q = debouncedSearch;
-      if (category) params.categoryId = category;
+      if (mainCategory) params.mainCategoryId = mainCategory;
+      if (subCategory) params.subCategoryId = subCategory;
+      if (selectedKeywordIds.length)
+        params.keywordIds = selectedKeywordIds.join(",");
       if (debouncedMinPrice) params.minPrice = debouncedMinPrice;
       if (debouncedMaxPrice) params.maxPrice = debouncedMaxPrice;
       if (isVeg)
@@ -151,6 +241,35 @@ function ProductsListContent() {
       setTotalPages(response.data.meta?.totalPages || 1);
     } catch (error) {
       console.error("Error fetching products:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchSuppliers = async () => {
+    try {
+      setLoading(true);
+      const params: Record<string, string | number | boolean | undefined> = {
+        page,
+        limit,
+      };
+      if (debouncedSearch) params.q = debouncedSearch;
+      if (mainCategory) params.mainCategoryId = mainCategory;
+      if (subCategory) params.subCategoryId = subCategory;
+      if (selectedKeywordIds.length)
+        params.keywordIds = selectedKeywordIds.join(",");
+      if (debouncedMinPrice) params.minPrice = debouncedMinPrice;
+      if (debouncedMaxPrice) params.maxPrice = debouncedMaxPrice;
+      if (isVeg)
+        params.isVeg =
+          isVeg === "veg" ? true : isVeg === "nonveg" ? false : undefined;
+      const response = await api.get("/products/suppliers", { params });
+      const items = (response.data.data || []) as Supplier[];
+      setSuppliers(items);
+      setTotal(response.data.meta?.total || 0);
+      setTotalPages(response.data.meta?.totalPages || 1);
+    } catch (error) {
+      console.error("Error fetching suppliers:", error);
     } finally {
       setLoading(false);
     }
@@ -179,11 +298,11 @@ function ProductsListContent() {
   };
   const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSort(e.target.value);
-    router.push(`/products-list?page=1`);
+    pushWithParams({ page: 1 });
   };
 
   const handlePageChange = (newPage: number) => {
-    router.push(`/products-list?page=${newPage}`);
+    pushWithParams({ page: newPage });
   };
 
   // For price slider, update min/max price
@@ -193,9 +312,9 @@ function ProductsListContent() {
     <MainLayout>
       <section className="p-16 mb-12">
         <div className="mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-10">
-          <h1 className="text-3xl font-bold text-[#181818]">All Products</h1>
+          <h1 className="text-3xl font-bold text-[#181818]">Browse</h1>
           <Link
-            href="/"
+            href="/dashboard"
             className="bg-[#F4D300] text-[#181818] font-semibold px-7 py-2 rounded-full shadow hover:bg-yellow-400 transition text-lg w-fit"
           >
             Back to Home
@@ -214,69 +333,148 @@ function ProductsListContent() {
                 <h4 className="text-sm font-semibold text-gray-700 mb-2">
                   Categories
                 </h4>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    className={`px-3 py-1.5 rounded-full border text-sm font-semibold transition shadow-sm ${
-                      category === ""
-                        ? "bg-[#F4D300] text-[#181818] border-yellow-300"
-                        : "bg-gray-100 text-gray-700 border-gray-200 hover:bg-yellow-50"
-                    }`}
-                    onClick={() => {
-                      setCategory("");
-                      router.push(`/products-list?page=1`);
-                    }}
-                  >
-                    All
-                  </button>
-                  {categories.slice(0, 6).map((cat) => (
+                <div className="flex flex-col gap-3">
+                  <div className="flex gap-2">
                     <button
-                      key={cat.id}
                       className={`px-3 py-1.5 rounded-full border text-sm font-semibold transition shadow-sm ${
-                        category === cat.id
+                        !mainCategory && !subCategory
                           ? "bg-[#F4D300] text-[#181818] border-yellow-300"
                           : "bg-gray-100 text-gray-700 border-gray-200 hover:bg-yellow-50"
                       }`}
                       onClick={() => {
-                        setCategory(cat.id);
-                        router.push(
-                          `/products-list?page=1&categoryId=${cat.id}`
-                        );
+                        setMainCategory("");
+                        setSubCategory("");
+                        pushWithParams({ page: 1 });
                       }}
                     >
-                      {cat.name}
+                      All
                     </button>
-                  ))}
-                </div>
-                {categories.length > 6 && (
-                  <div className="relative mt-3">
+                  </div>
+                  <div className="grid grid-cols-1 gap-2">
                     <select
-                      value={category}
-                      onChange={handleCategoryChange}
+                      value={mainCategory}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setMainCategory(val);
+                        setSubCategory("");
+                        pushWithParams({
+                          page: 1,
+                          mainCategoryId: val || undefined,
+                          subCategoryId: undefined,
+                        });
+                      }}
                       className="px-3 py-2 pr-8 rounded-lg border font-semibold text-sm shadow-sm bg-gray-50 w-full focus:ring-2 focus:ring-[#F4D300] focus:border-[#F4D300] transition text-gray-700 border-gray-200 appearance-none"
                     >
-                      <option value="">More...</option>
-                      {categories.slice(6).map((cat) => (
-                        <option key={cat.id} value={cat.id}>
-                          {cat.name}
+                      <option value="">Select Main Category</option>
+                      {(categoriesFlat.length
+                        ? categoriesFlat.filter((n) => !n.parent_id)
+                        : categoryTree
+                      ).map((node) => (
+                        <option key={node.id} value={node.id}>
+                          {node.name}
                         </option>
                       ))}
                     </select>
-                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
-                      <svg
-                        width="18"
-                        height="18"
-                        fill="none"
-                        viewBox="0 0 24 24"
+                    <select
+                      value={subCategory}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setSubCategory(val);
+                        pushWithParams({
+                          page: 1,
+                          subCategoryId: val || undefined,
+                        });
+                      }}
+                      className="px-3 py-2 pr-8 rounded-lg border font-semibold text-sm shadow-sm bg-gray-50 w-full focus:ring-2 focus:ring-[#F4D300] focus:border-[#F4D300] transition text-gray-700 border-gray-200 appearance-none"
+                      disabled={!mainCategory}
+                    >
+                      <option value="">Select Sub Category</option>
+                      {(categoriesFlat.length
+                        ? categoriesFlat.filter(
+                            (n) => n.parent_id === mainCategory
+                          )
+                        : categoryTree.find((n) => n.id === mainCategory)
+                            ?.children || []
+                      ).map((child) => (
+                        <option key={child.id} value={child.id}>
+                          {child.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Keywords */}
+              <div className="mb-6">
+                <h4 className="text-sm font-semibold text-gray-700 mb-2">
+                  Keywords
+                </h4>
+                <div className="max-h-56 overflow-auto rounded-lg border border-gray-200 p-2 bg-gray-50">
+                  {allKeywords.map((k) => {
+                    const checked = selectedKeywordIds.includes(k.id);
+                    return (
+                      <label
+                        key={k.id}
+                        className="flex items-center gap-2 py-1 px-2 hover:bg-white rounded cursor-pointer"
                       >
-                        <path
-                          d="M7 10l5 5 5-5"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => {
+                            const next = e.target.checked
+                              ? [...selectedKeywordIds, k.id]
+                              : selectedKeywordIds.filter((id) => id !== k.id);
+                            setSelectedKeywordIds(next);
+                            pushWithParams({
+                              page: 1,
+                              keywordIds: next.length
+                                ? next.join(",")
+                                : undefined,
+                            });
+                          }}
+                          className="h-4 w-4 accent-yellow-400"
                         />
-                      </svg>
-                    </span>
+                        <span className="text-sm text-gray-800">{k.name}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+                {selectedKeywordIds.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {selectedKeywordIds.map((id) => {
+                      const kw = allKeywords.find((k) => k.id === id);
+                      if (!kw) return null;
+                      return (
+                        <button
+                          key={id}
+                          onClick={() => {
+                            const next = selectedKeywordIds.filter(
+                              (kid) => kid !== id
+                            );
+                            setSelectedKeywordIds(next);
+                            pushWithParams({
+                              page: 1,
+                              keywordIds: next.length
+                                ? next.join(",")
+                                : undefined,
+                            });
+                          }}
+                          className="px-2 py-1 rounded-full border border-yellow-300 bg-yellow-100 text-yellow-800 text-xs"
+                        >
+                          {kw.name} ×
+                        </button>
+                      );
+                    })}
+                    <button
+                      onClick={() => {
+                        setSelectedKeywordIds([]);
+                        pushWithParams({ page: 1, keywordIds: undefined });
+                      }}
+                      className="px-2 py-1 rounded-full border border-gray-300 bg-gray-100 text-gray-700 text-xs"
+                    >
+                      Clear keywords
+                    </button>
                   </div>
                 )}
               </div>
@@ -295,7 +493,7 @@ function ProductsListContent() {
                     }`}
                     onClick={() => {
                       setIsVeg("");
-                      router.push(`/products-list?page=1`);
+                      pushWithParams({ page: 1 });
                     }}
                   >
                     All
@@ -308,7 +506,7 @@ function ProductsListContent() {
                     }`}
                     onClick={() => {
                       setIsVeg("veg");
-                      router.push(`/products-list?page=1`);
+                      pushWithParams({ page: 1 });
                     }}
                   >
                     Veg
@@ -321,7 +519,7 @@ function ProductsListContent() {
                     }`}
                     onClick={() => {
                       setIsVeg("nonveg");
-                      router.push(`/products-list?page=1`);
+                      pushWithParams({ page: 1 });
                     }}
                   >
                     Non-Veg
@@ -395,6 +593,35 @@ function ProductsListContent() {
 
           {/* Right content: search, sort, products */}
           <div className="md:col-span-9">
+            {/* Tabs */}
+            <div className="bg-white rounded-2xl shadow-2xl p-2 mb-4 border border-gray-100 inline-flex">
+              <button
+                className={`px-6 py-2 rounded-xl text-sm font-semibold transition ${
+                  activeTab === "products"
+                    ? "bg-[#F4D300] text-[#181818]"
+                    : "text-gray-700 hover:bg-gray-50"
+                }`}
+                onClick={() => {
+                  setActiveTab("products");
+                  pushWithParams({ page: 1, tab: "products" });
+                }}
+              >
+                Products
+              </button>
+              <button
+                className={`ml-2 px-6 py-2 rounded-xl text-sm font-semibold transition ${
+                  activeTab === "suppliers"
+                    ? "bg-[#F4D300] text-[#181818]"
+                    : "text-gray-700 hover:bg-gray-50"
+                }`}
+                onClick={() => {
+                  setActiveTab("suppliers");
+                  pushWithParams({ page: 1, tab: "suppliers" });
+                }}
+              >
+                Suppliers
+              </button>
+            </div>
             {/* Search bar */}
             <div className="bg-white rounded-2xl shadow-2xl p-6 mb-6 border border-gray-100">
               <div className="relative w-full">
@@ -402,7 +629,11 @@ function ProductsListContent() {
                   <FiSearch size={24} className="font-bold" />
                 </span>
                 <Input
-                  placeholder="Search for products, brands, categories..."
+                  placeholder={
+                    activeTab === "products"
+                      ? "Search for products, brands, categories..."
+                      : "Search suppliers by products, categories, keywords..."
+                  }
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="w-full h-14 text-lg bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#F4D300] focus:border-[#F4D300] transition placeholder:text-gray-400 text-gray-900 font-medium shadow-lg pl-14 pr-14"
@@ -431,46 +662,90 @@ function ProductsListContent() {
             {/* Sort + count bar */}
             <div className="flex items-center justify-between mb-4">
               <div className="text-gray-600 text-sm">
-                Showing {products.length} of {total} products
+                {activeTab === "products"
+                  ? `Showing ${products.length} of ${total} products`
+                  : `Showing ${suppliers.length} of ${total} suppliers`}
               </div>
-              <div>
-                <select
-                  value={sort}
-                  onChange={handleSortChange}
-                  className="border border-gray-200 rounded-lg px-4 py-2 text-base bg-gray-50 min-w-[160px] focus:ring-2 focus:ring-[#F4D300] focus:border-[#F4D300] transition font-semibold text-gray-800"
-                >
-                  {sortOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {activeTab === "products" && (
+                <div>
+                  <select
+                    value={sort}
+                    onChange={handleSortChange}
+                    className="border border-gray-200 rounded-lg px-4 py-2 text-base bg-gray-50 min-w-[160px] focus:ring-2 focus:ring-[#F4D300] focus:border-[#F4D300] transition font-semibold text-gray-800"
+                  >
+                    {sortOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
 
-            {/* Products grid */}
+            {/* Content */}
             {loading ? (
               <div className="flex justify-center items-center min-h-[400px]">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#F4D300]"></div>
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
-                  {products.map((product) => (
-                    <ProductCard
-                      key={product.id}
-                      id={product.id}
-                      name={product.name}
-                      description={product.description}
-                      price={product.price}
-                      imageUrl={product.image_url}
-                      images={product.images}
-                      isVeg={product.is_veg}
-                      brand={product.brand}
-                      category={product.category_name}
-                    />
-                  ))}
-                </div>
+                {activeTab === "products" ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
+                    {products.map((product) => (
+                      <ProductCard
+                        key={product.id}
+                        id={product.id}
+                        name={product.name}
+                        description={product.description}
+                        price={product.price}
+                        imageUrl={product.image_url}
+                        images={product.images}
+                        isVeg={product.is_veg}
+                        brand={product.brand}
+                        category={product.category_name}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                    {suppliers.map((s) => {
+                      const displayName =
+                        s.company_name && s.company_name.trim().length > 0
+                          ? s.company_name
+                          : `${s.first_name || ""} ${s.last_name || ""}`.trim();
+                      return (
+                        <a
+                          key={s.id}
+                          href={`/seller/${s.id}`}
+                          className="bg-white border border-gray-200 rounded-2xl p-5 shadow hover:shadow-lg transition block"
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-full bg-yellow-100 text-yellow-800 flex items-center justify-center font-bold">
+                              {displayName.slice(0, 1).toUpperCase()}
+                            </div>
+                            <div>
+                              <div className="text-lg font-semibold text-gray-900">
+                                {displayName || "Supplier"}
+                              </div>
+                              {s.email && (
+                                <div className="text-sm text-gray-600">
+                                  {s.email}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="mt-4 text-sm text-gray-700">
+                            Products matching filters:{" "}
+                            <span className="font-semibold">
+                              {s.total_products}
+                            </span>
+                          </div>
+                        </a>
+                      );
+                    })}
+                  </div>
+                )}
 
                 {/* Pagination */}
                 {totalPages > 1 && (

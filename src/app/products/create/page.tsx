@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useDropzone } from "react-dropzone";
 import {
   DndContext,
@@ -40,7 +40,10 @@ const productSchema = z.object({
   name: z.string().min(2),
   description: z.string().min(5),
   price: z.coerce.number().min(1),
-  category_id: z.string().min(1),
+  category_id: z.string().optional(),
+  main_category_id: z.string().min(1),
+  sub_category_id: z.string().min(1),
+  keyword_ids: z.array(z.string()).optional(),
   is_veg: z.boolean(),
   preparation_time: z.coerce.number().min(1),
   images: z.array(z.any()).min(1, "At least one image is required"),
@@ -60,6 +63,13 @@ export default function CreateProductPage() {
   const [categories, setCategories] = useState<{ id: string; name: string }[]>(
     []
   );
+  const [mains, setMains] = useState<{ id: string; name: string }[]>([]);
+  const [subs, setSubs] = useState<
+    { id: string; name: string; parent_id: string }[]
+  >([]);
+  const [keywords, setKeywords] = useState<{ id: string; name: string }[]>([]);
+  const [keywordQuery, setKeywordQuery] = useState("");
+  const keywordsReqSeq = useRef(0);
 
   const {
     register,
@@ -136,12 +146,58 @@ export default function CreateProductPage() {
       try {
         const res = await api.get("/categories");
         setCategories(res.data.data || []);
+        // Split mains/subs for the new fields
+        const all = (res.data.data || []) as {
+          id: string;
+          name: string;
+          parent_id?: string | null;
+        }[];
+        setMains(all.filter((c) => !c.parent_id));
+        setSubs(all.filter((c) => c.parent_id) as any);
+        // keywords will load based on selected main/sub
       } catch (err) {
         console.error("Failed to fetch categories:", err);
       }
     };
     fetchCategories();
   }, []);
+
+  // Load keywords only for selected main/sub
+  const selectedMain = watch("main_category_id");
+  const selectedSub = watch("sub_category_id");
+  const loadKeywords = (mainId?: string, subId?: string) => {
+    keywordsReqSeq.current += 1;
+    const seq = keywordsReqSeq.current;
+    if (!mainId) {
+      setKeywords([]);
+      return;
+    }
+    const params: Record<string, string> = { mainCategoryId: mainId };
+    if (subId) params.subCategoryId = subId;
+    api
+      .get("/keywords", { params })
+      .then((res) => {
+        if (seq !== keywordsReqSeq.current) return;
+        const arr = (res.data?.data || []) as { id: string; name: string }[];
+        if (arr.length === 0 && subId) {
+          // Fallback: show main-only keywords when sub has none
+          const fallbackParams: Record<string, string> = {
+            mainCategoryId: mainId,
+          };
+          return api.get("/keywords", { params: fallbackParams }).then((r2) => {
+            if (seq !== keywordsReqSeq.current) return;
+            setKeywords(
+              (r2.data?.data || []) as { id: string; name: string }[]
+            );
+          });
+        }
+        setKeywords(arr);
+      })
+      .catch(() => {
+        if (seq !== keywordsReqSeq.current) return;
+        setKeywords([]);
+      });
+  };
 
   if (!user) {
     return null;
@@ -164,6 +220,11 @@ export default function CreateProductPage() {
       formData.append("description", data.description ?? "");
       formData.append("price", String(data.price ?? ""));
       formData.append("category_id", data.category_id ?? "");
+      formData.append("main_category_id", data.main_category_id ?? "");
+      formData.append("sub_category_id", data.sub_category_id ?? "");
+      if (data.keyword_ids && data.keyword_ids.length) {
+        data.keyword_ids.forEach((id) => formData.append("keyword_ids[]", id));
+      }
       formData.append("is_veg", String(data.is_veg ?? false));
       formData.append("preparation_time", String(data.preparation_time ?? ""));
 
@@ -192,7 +253,7 @@ export default function CreateProductPage() {
       // Call API
       const res = await api.post("/products", formData);
       if (res.status !== 201) throw new Error("Failed to create product");
-      router.push("/");
+      router.replace("/dashboard");
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message || "Failed to create product");
@@ -213,7 +274,7 @@ export default function CreateProductPage() {
               <Button
                 type="button"
                 className="rounded-full bg-[#F4D300] hover:bg-yellow-400 text-[#181818] font-semibold px-6 py-2 shadow transition"
-                onClick={() => router.back()}
+                onClick={() => router.replace("/dashboard")}
               >
                 <FiArrowLeft className="mr-2" /> Back
               </Button>
@@ -229,31 +290,137 @@ export default function CreateProductPage() {
             )}
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-10">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Product name
+                  </label>
                   <Input
                     {...register("name")}
-                    placeholder="Product name"
+                    placeholder="Enter product name"
                     error={errors.name?.message}
                     className="h-12 focus:ring-2 focus:ring-yellow-300"
                   />
                 </div>
-                <div>
+                {/* Main category full width for clear hierarchy */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Main category
+                  </label>
                   <select
-                    {...register("category_id")}
+                    {...register("main_category_id")}
                     className="h-12 w-full rounded-md border border-gray-300 px-3 focus:ring-2 focus:ring-yellow-300 focus:border-yellow-400 transition text-gray-900"
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      // clear sub when main changes
+                      setValue("main_category_id", val, {
+                        shouldValidate: true,
+                      });
+                      const firstSub = subs.find((s) => s.parent_id === val);
+                      if (firstSub) {
+                        setValue("sub_category_id", firstSub.id, {
+                          shouldValidate: true,
+                        });
+                        loadKeywords(val || undefined, firstSub.id);
+                      } else {
+                        setValue("sub_category_id", "", {
+                          shouldValidate: true,
+                        });
+                        loadKeywords(val || undefined, undefined);
+                      }
+                    }}
                   >
-                    <option value="">Select category</option>
-                    {categories.map((cat) => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.name}
+                    <option value="">Select main category</option>
+                    {mains.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name}
                       </option>
                     ))}
                   </select>
-                  {errors.category_id && (
+                  {errors.main_category_id && (
                     <p className="text-sm text-red-500 mt-1">
-                      {errors.category_id.message}
+                      {errors.main_category_id.message}
                     </p>
                   )}
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Sub category
+                  </label>
+                  <select
+                    {...register("sub_category_id")}
+                    className="h-12 w-full rounded-md border border-gray-300 px-3 focus:ring-2 focus:ring-yellow-300 focus:border-yellow-400 transition text-gray-900 disabled:bg-gray-100 disabled:text-gray-500"
+                    disabled={!selectedMain}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setValue("sub_category_id", val, {
+                        shouldValidate: true,
+                      });
+                      loadKeywords(selectedMain || undefined, val || undefined);
+                    }}
+                  >
+                    <option value="">Select sub category</option>
+                    {subs
+                      .filter(
+                        (s) => !selectedMain || s.parent_id === selectedMain
+                      )
+                      .map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name}
+                        </option>
+                      ))}
+                  </select>
+                  {errors.sub_category_id && (
+                    <p className="text-sm text-red-500 mt-1">
+                      {errors.sub_category_id.message}
+                    </p>
+                  )}
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Keywords
+                  </label>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-60 overflow-auto border border-gray-300 rounded-xl p-3 bg-white">
+                    {!selectedMain && (
+                      <div className="col-span-2 md:col-span-3 text-sm text-gray-500 py-2">
+                        Select a main category to load keywords
+                      </div>
+                    )}
+                    {selectedMain && keywords.length === 0 && (
+                      <div className="col-span-2 md:col-span-3 text-sm text-gray-500 py-2">
+                        No keywords available for this selection
+                      </div>
+                    )}
+                    {keywords.map((k) => {
+                      const current = (watch("keyword_ids") || []) as string[];
+                      const checked = current.includes(k.id);
+                      const pill = checked
+                        ? "bg-gray-50 border-gray-400 text-gray-900"
+                        : "bg-white border-gray-300 text-gray-800";
+                      return (
+                        <label
+                          key={k.id}
+                          className={`flex items-center gap-2 text-sm rounded-full px-3 py-1.5 border cursor-pointer select-none hover:border-gray-400 ${pill}`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) => {
+                              const next = e.target.checked
+                                ? Array.from(
+                                    new Set([...(current || []), k.id])
+                                  )
+                                : (current || []).filter((id) => id !== k.id);
+                              setValue("keyword_ids", next, {
+                                shouldValidate: true,
+                              });
+                            }}
+                            className="h-4 w-4 accent-gray-600"
+                          />
+                          <span className="truncate">{k.name}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
                 </div>
                 <div>
                   <Input

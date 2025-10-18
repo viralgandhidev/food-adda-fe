@@ -21,12 +21,12 @@ export default function Footer() {
   }, []);
   return (
     <footer className="bg-[#1C1A1A] text-gray-300">
-      <div className="max-w-[1200px] mx-auto px-6 md:px-12 py-10">
+      <div className="mx-auto px-6 md:px-12 py-10">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10">
           {/* Brand + social */}
           <div className="col-span-1">
             <Image src="/logo-1.png" alt="FoodAdda" width={120} height={120} />
-            <div className="mt-4">
+            <div className="mt-2">
               <a
                 href="#"
                 aria-label="Instagram"

@@ -41,14 +41,12 @@ export default function HeroSection() {
           price?: number;
         }>;
         setSuggestions(
-          items
-            .slice(0, 5)
-            .map((p) => ({
-              id: p.id,
-              name: p.name,
-              image_url: p.image_url,
-              price: p.price,
-            }))
+          items.slice(0, 5).map((p) => ({
+            id: p.id,
+            name: p.name,
+            image_url: p.image_url,
+            price: p.price,
+          }))
         );
         setOpen(true);
       } catch {
@@ -71,7 +69,7 @@ export default function HeroSection() {
   };
 
   return (
-    <section className="relative h-[665px] flex pt-36 px-16 bg-black">
+    <section className="relative h-[665px] flex pt-36 bg-black px-6 md:px-8">
       {/* Background Image */}
       <Image
         src="/images/hero-bg.jpg"

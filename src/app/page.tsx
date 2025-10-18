@@ -57,6 +57,7 @@ export default function LandingPage() {
   }
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
+  const blogScrollerRef = useRef<HTMLDivElement | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [featureOpen, setFeatureOpen] = useState<null | "horeca" | "franchise">(
     null
@@ -195,7 +196,7 @@ export default function LandingPage() {
 
       {/* Key Value Props */}
       <section className="bg-[#1C1A1A] text-white py-24">
-        <div className="max-w-[1400px] mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-20 px-6 md:px-12">
+        <div className="mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-20 px-6 md:px-12">
           {/* Authentic Products */}
           <div className="flex flex-col items-start gap-4 max-w-xs">
             <div className="w-14 h-14 rounded-full bg-[#F6DD3D] text-[#1C1A1A] flex items-center justify-center">
@@ -263,10 +264,10 @@ export default function LandingPage() {
       </section>
 
       {/* About Us (auto slider) */}
-      <section className="px-6 md:px-12 mt-12">
-        <div className="mx-auto grid grid-cols-1 md:grid-cols-2 items-center gap-10 bg-white rounded-2xl p-8">
+      <section className="bg-[#FFFCE9] md:px-12 py-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 items-center justify-between rounded-2xl py-8">
           {/* Text */}
-          <div>
+          <div className="mr-auto">
             <div className="text-xs uppercase tracking-wide text-gray-500 mb-2">
               {aboutSlides[aboutIdx].eyebrow}
             </div>
@@ -295,7 +296,7 @@ export default function LandingPage() {
             </div>
           </div>
           {/* Illustration */}
-          <div className="relative h-[220px] md:h-[260px]">
+          <div className="relative h-[220px] mr-0 md:h-[260px] flex text-right">
             <Image
               src={aboutSlides[aboutIdx].image}
               alt={aboutSlides[aboutIdx].title}
@@ -374,7 +375,7 @@ export default function LandingPage() {
       </section>
 
       {/* Top Viewed Products */}
-      <section className="px-6 md:px-12 mt-10 mb-16">
+      <section className="px-6 md:px-12 py-12 mt-7 bg-[#FFFCE9]">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-[#181818]">
             Discover new products across categories
@@ -471,11 +472,7 @@ export default function LandingPage() {
       </section>
 
       {/* HoReCa + Distribution section (moved below discover products) */}
-      <section
-        id="b2b-b2c"
-        ref={b2bRef}
-        className="relative px-6 md:px-12 mt-8"
-      >
+      <section id="b2b-b2c" ref={b2bRef} className="relative px-6 md:px-12">
         {/* yellow band behind first card */}
         <div className="absolute inset-x-0 top-0 h-40 md:h-72 bg-[#F4D300]" />
 
@@ -570,38 +567,77 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Read our Blogs */}
+      {/* Read our Blogs (slider like Discover products) */}
       <section className="px-6 md:px-12 mt-10">
-        <div className="max-w-[1200px] mx-auto">
-          <h3 className="text-lg font-semibold text-[#181818] mb-4">
-            Read our Blogs
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {blogs.slice(0, 6).map((b) => (
-              <Link key={b.slug} href={`/blog/${b.slug}`} className="group">
-                <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-                  <div className="relative h-[150px]">
-                    <Image
-                      src={b.coverImage}
-                      alt={b.title}
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
-                  <div className="px-4 pt-3 pb-5">
-                    <div className="text-[10px] text-gray-500 mb-1">
-                      {b.author} | {b.date}
+        <div className="mx-auto">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-[#181818]">
+              Read our Blogs
+            </h3>
+            <Link href="/blog" className="text-sm text-gray-600">
+              View all
+            </Link>
+          </div>
+          <div className="relative">
+            <button
+              aria-label="Prev"
+              className="hidden md:flex absolute -left-5 top-[120px] z-20 w-10 h-10 items-center justify-center rounded-full bg-[#F6DD3D] text-[#1C1A1A] shadow-lg ring-1 ring-yellow-300 hover:scale-105 transition"
+              onClick={() =>
+                blogScrollerRef.current?.scrollBy({
+                  left: -320,
+                  behavior: "smooth",
+                })
+              }
+            >
+              <FiChevronLeft size={18} />
+            </button>
+            <button
+              aria-label="Next"
+              className="hidden md:flex absolute -right-5 top-[120px] z-20 w-10 h-10 items-center justify-center rounded-full bg-[#F6DD3D] text-[#1C1A1A] shadow-lg ring-1 ring-yellow-300 hover:scale-105 transition"
+              onClick={() =>
+                blogScrollerRef.current?.scrollBy({
+                  left: 320,
+                  behavior: "smooth",
+                })
+              }
+            >
+              <FiChevronRight size={18} />
+            </button>
+            <div
+              ref={blogScrollerRef}
+              className="flex gap-6 overflow-x-auto snap-x snap-mandatory pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']"
+            >
+              {blogs.slice(0, 12).map((b) => (
+                <div key={b.slug} className="snap-start shrink-0 w-[320px]">
+                  <Link href={`/blog/${b.slug}`} className="group">
+                    <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                      <div className="relative h-[180px]">
+                        <Image
+                          src={b.coverImage}
+                          alt={b.title}
+                          fill
+                          className="object-cover transition-transform duration-300 ease-out group-hover:scale-105"
+                        />
+                      </div>
+                      <div className="px-4 pt-3 pb-5">
+                        <div className="text-[10px] text-gray-500 mb-1">
+                          {b.author} | {b.date}
+                        </div>
+                        <div
+                          className="font-semibold text-[#181818] truncate"
+                          title={b.title}
+                        >
+                          {b.title}
+                        </div>
+                        <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                          {b.excerpt}
+                        </p>
+                      </div>
                     </div>
-                    <div className="font-semibold text-[#181818] truncate">
-                      {b.title}
-                    </div>
-                    <p className="text-xs text-gray-600 mt-1 line-clamp-2">
-                      {b.excerpt}
-                    </p>
-                  </div>
+                  </Link>
                 </div>
-              </Link>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       </section>
