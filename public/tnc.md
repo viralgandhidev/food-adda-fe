@@ -1,7 +1,3 @@
-**Terms & Conditions**
-
--
-
 **Advertising & Online Exposure**
 
 The website, Foodadda.in is an online web-based platform for exchanging, exploring, and enhancing Food & food related business online. It is owned and managed by **Cirrus Trade Global** ("Company") with its registered office 337, 3rd Floor Infinity Arcade, Pratap Nagar, Vadodara - 39004
@@ -72,9 +68,7 @@ This Agreement and any dispute or matter arising from incidental use of Foodadda
 
 **Return Policy**
 
--
-
-**Payment and Refund Issue**
+- **Payment and Refund Issue**
 
 All the payments would be accepted on standard modes set by Foodadda.in. As we at Foodadda.in keep up high interactions with our clients and carry out the entire process with their approval thus there is no provision for any kind of full or partial refund. We clearly mention here that paid amount would not be refunded in any circumstances. Once we received the subscription amount it will be valid till the end of the subscription date.
 
@@ -112,4 +106,3 @@ H. As a condition of your access to and use of Foodadda.in, you agree that you w
 I. As a condition of your access to and use of Foodadda.in, you agree that you will not use the Foodadda.in service to infringe the intellectual property rights of others in any way. Foodadda.in will in appropriate circumstances terminate the accounts of members or users who are repeat infringers of the copyrights, or other intellectual property rights, of others. In addition, Foodadda.in reserves the right to terminate the account of a user upon any single infringement of the rights of others in conjunction with the use of the Foodadda.in service, or if Foodadda.in believes that user conduct is harmful to the interests of Foodadda.in, its affiliates, or other users, or for any other reason in Foodadda.in sole discretion, with or without cause.
 
 J. We do not entertain any type of deals with such sites. Sending mails in bulk quantities should not be done from our servers. We suggest you to take specialized services from a third party or you may go for your own dedicated server.
-

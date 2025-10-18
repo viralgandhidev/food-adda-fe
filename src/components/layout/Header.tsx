@@ -112,9 +112,9 @@ export default function Header() {
         <div className="max-w-8xl mx-auto flex items-center justify-between px-4">
           {/* Logo */}
           <div className="flex items-center gap-10">
-            <Link href="/" className="flex items-center gap-2">
+            <Link href="/" className="flex items-center gap-2 bg-[#1C1A1A]">
               <Image
-                src="/logo-1.png"
+                src="/images/circular-logo.svg"
                 alt="Logo"
                 width={100}
                 height={100}
@@ -137,7 +137,7 @@ export default function Header() {
         <div className="flex items-center gap-10">
           <Link href="/" className="flex items-center gap-2">
             <Image
-              src="/logo-1.png"
+              src="/circular-logo.svg"
               alt="Logo"
               width={100}
               height={100}
@@ -259,7 +259,7 @@ export default function Header() {
             {/* Left info */}
             <div className="col-span-3">
               <div className="text-base font-semibold text-[#0E1F35] mb-3">
-                {showMega === "B2B" ? "B2B Suppliers" : "B2C Buyers"}
+                {showMega === "B2B" ? "B2B Suppliers" : "B2C Suppliers"}
               </div>
               <p className="text-xs leading-5 text-gray-700 mb-4">
                 Browse structured categories. Hover a main category to see

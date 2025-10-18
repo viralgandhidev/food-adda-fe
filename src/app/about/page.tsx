@@ -5,18 +5,18 @@ import MainLayout from "@/components/layout/MainLayout";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-export default function TermsPage() {
+export default function AboutPage() {
   const [content, setContent] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await fetch("/tnc.md", { cache: "no-store" });
+        const res = await fetch("/about.md", { cache: "no-store" });
         const text = await res.text();
         setContent(text);
       } catch {
-        setContent("## Terms & Conditions\n\nContent unavailable.");
+        setContent("## About Us\n\nContent unavailable.");
       } finally {
         setLoading(false);
       }
@@ -28,9 +28,8 @@ export default function TermsPage() {
     <MainLayout>
       <section className="max-w-[1000px] mx-auto px-6 md:px-8 py-12">
         <h1 className="text-3xl font-extrabold text-[#181818] mb-6">
-          Terms & Conditions
+          About Us
         </h1>
-
         {loading ? (
           <div className="text-sm text-gray-500">Loading…</div>
         ) : (
