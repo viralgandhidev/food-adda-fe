@@ -22,6 +22,15 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Add the same auth header for multipart requests
+apiMultipart.interceptors.request.use((config) => {
+  const token = localStorage.getItem("token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 // Response interceptor for handling errors
 api.interceptors.response.use(
   (response) => response,

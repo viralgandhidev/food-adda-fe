@@ -110,6 +110,9 @@ export default function DashboardPage() {
   };
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<ProductSuggestion[]>([]);
+  const [kwSuggestions, setKwSuggestions] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
   const [open, setOpen] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
@@ -194,15 +197,17 @@ export default function DashboardPage() {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (!query) {
       setSuggestions([]);
+      setKwSuggestions([]);
       setOpen(false);
       return;
     }
     debounceRef.current = setTimeout(async () => {
       try {
         setSearchLoading(true);
-        const res = await api.get("/products", {
-          params: { q: query, limit: 5 },
-        });
+        const [res, kw] = await Promise.all([
+          api.get("/products", { params: { q: query, limit: 5 } }),
+          api.get("/keywords/search", { params: { q: query, limit: 5 } }),
+        ]);
         const items = (res.data?.data || []) as Array<{
           id: string;
           name: string;
@@ -217,9 +222,13 @@ export default function DashboardPage() {
             price: p.price ?? null,
           }))
         );
+        setKwSuggestions(
+          (kw.data?.data || []) as Array<{ id: string; name: string }>
+        );
         setOpen(true);
       } catch {
         setSuggestions([]);
+        setKwSuggestions([]);
         setOpen(false);
       } finally {
         setSearchLoading(false);
@@ -502,57 +511,106 @@ export default function DashboardPage() {
                 Search
               </button>
             </form>
-            {open && (suggestions.length > 0 || searchLoading) && (
-              <div className="relative z-20 mt-2 w-full bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
-                <ul className="max-h-80 overflow-auto">
+            {open &&
+              (suggestions.length > 0 ||
+                kwSuggestions.length > 0 ||
+                searchLoading) && (
+                <div className="relative z-20 mt-2 w-full bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
                   {searchLoading && (
-                    <li className="px-4 py-3 text-sm text-gray-500">
+                    <div className="px-4 py-3 text-sm text-gray-500">
                       Searching…
-                    </li>
+                    </div>
                   )}
-                  {!searchLoading &&
-                    suggestions.map((s) => (
-                      <li key={s.id} className="hover:bg-gray-50">
-                        <a
-                          href={`/product/${s.id}`}
-                          className="flex items-center gap-3 px-4 py-3"
-                          onClick={() => setOpen(false)}
-                        >
-                          <div className="w-10 h-10 rounded bg-gray-100 overflow-hidden flex items-center justify-center">
-                            <img
-                              src={s.image_url || "/images/default-product.jpg"}
-                              alt=""
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                          <div className="flex-1">
-                            <div className="text-sm font-medium text-gray-900">
-                              {s.name}
-                            </div>
-                            {s.price !== null && s.price !== undefined && (
-                              <div className="text-xs text-gray-500">
-                                ₹{s.price}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
+                    <div className="border-b md:border-b-0 md:border-r border-gray-100">
+                      <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                        Products
+                      </div>
+                      <ul className="max-h-72 overflow-auto">
+                        {suggestions.map((s) => (
+                          <li key={s.id} className="hover:bg-gray-50">
+                            <a
+                              href={`/product/${s.id}`}
+                              className="flex items-center gap-3 px-4 py-3"
+                              onClick={() => setOpen(false)}
+                            >
+                              <div className="w-10 h-10 rounded bg-gray-100 overflow-hidden flex items-center justify-center">
+                                <img
+                                  src={
+                                    s.image_url || "/images/default-product.jpg"
+                                  }
+                                  alt=""
+                                  className="w-full h-full object-cover"
+                                />
                               </div>
-                            )}
-                          </div>
-                        </a>
-                      </li>
-                    ))}
-                </ul>
-                <div className="border-t border-gray-100">
-                  <button
-                    onClick={() => {
-                      const params = new URLSearchParams();
-                      if (query) params.set("q", query);
-                      router.push(`/products-list?${params.toString()}`);
-                    }}
-                    className="w-full text-center px-4 py-3 text-sm font-medium text-[#181818] hover:bg-gray-50"
-                  >
-                    View all results
-                  </button>
+                              <div className="flex-1">
+                                <div className="text-sm font-medium text-gray-900">
+                                  {s.name}
+                                </div>
+                                {s.price !== null && s.price !== undefined && (
+                                  <div className="text-xs text-gray-500">
+                                    ₹{s.price}
+                                  </div>
+                                )}
+                              </div>
+                            </a>
+                          </li>
+                        ))}
+                        {!searchLoading && suggestions.length === 0 && (
+                          <li className="px-4 py-3 text-sm text-gray-500">
+                            No products
+                          </li>
+                        )}
+                      </ul>
+                    </div>
+                    <div>
+                      <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                        Keywords
+                      </div>
+                      <ul className="max-h-72 overflow-auto">
+                        {kwSuggestions.map((k) => (
+                          <li key={k.id} className="hover:bg-gray-50">
+                            <a
+                              href={`/products-list?keywordIds=${k.id}`}
+                              className="flex items-center gap-3 px-4 py-3"
+                              onClick={() => setOpen(false)}
+                            >
+                              <div className="w-10 h-10 rounded bg-yellow-100 text-yellow-800 flex items-center justify-center text-sm font-semibold">
+                                #
+                              </div>
+                              <div className="flex-1">
+                                <div className="text-sm font-medium text-gray-900">
+                                  {k.name}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  Keyword
+                                </div>
+                              </div>
+                            </a>
+                          </li>
+                        ))}
+                        {!searchLoading && kwSuggestions.length === 0 && (
+                          <li className="px-4 py-3 text-sm text-gray-500">
+                            No keywords
+                          </li>
+                        )}
+                      </ul>
+                    </div>
+                  </div>
+                  <div className="border-t border-gray-100">
+                    <button
+                      onClick={() => {
+                        const params = new URLSearchParams();
+                        if (query) params.set("q", query);
+                        router.push(`/products-list?${params.toString()}`);
+                      }}
+                      className="w-full text-center px-4 py-3 text-sm font-medium text-[#181818] hover:bg-gray-50"
+                    >
+                      View all results
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
           </div>
         </section>
 

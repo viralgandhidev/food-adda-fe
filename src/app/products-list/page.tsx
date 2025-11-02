@@ -76,9 +76,17 @@ function ProductsListContent() {
 
   // Filter state
   const [search, setSearch] = useState("");
+  const [suggestions, setSuggestions] = useState<
+    Array<{ id: string; name: string; image_url?: string }>
+  >([]);
+  const [kwSuggestions, setKwSuggestions] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
+  const [openSuggest, setOpenSuggest] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const searchTimeout = useRef<NodeJS.Timeout | null>(null);
-  const [category, setCategory] = useState("");
+  // const [category, setCategory] = useState("");
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
@@ -140,6 +148,43 @@ function ProductsListContent() {
     return () => {
       if (searchTimeout.current) clearTimeout(searchTimeout.current);
     };
+  }, [search]);
+
+  // Suggestions fetch
+  useEffect(() => {
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    if (!search) {
+      setSuggestions([]);
+      setKwSuggestions([]);
+      setOpenSuggest(false);
+      return;
+    }
+    const t = setTimeout(async () => {
+      try {
+        setSearchLoading(true);
+        const [res, kw] = await Promise.all([
+          api.get("/products", { params: { q: search, limit: 5 } }),
+          api.get("/keywords/search", { params: { q: search, limit: 5 } }),
+        ]);
+        const items = (res.data?.data || []) as Array<{
+          id: string;
+          name: string;
+          image_url?: string;
+        }>;
+        setSuggestions(items.slice(0, 5));
+        setKwSuggestions(
+          (kw.data?.data || []) as Array<{ id: string; name: string }>
+        );
+        setOpenSuggest(true);
+      } catch {
+        setSuggestions([]);
+        setKwSuggestions([]);
+        setOpenSuggest(false);
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 250);
+    return () => clearTimeout(t);
   }, [search]);
 
   // Debounce min/max price changes
@@ -276,14 +321,14 @@ function ProductsListContent() {
   };
 
   // Handlers for filter changes
-  const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setCategory(e.target.value);
-    if (e.target.value) {
-      router.push(`/products-list?page=1&categoryId=${e.target.value}`);
-    } else {
-      router.push(`/products-list?page=1`);
-    }
-  };
+  // const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  //   setCategory(e.target.value);
+  //   if (e.target.value) {
+  //     router.push(`/products-list?page=1&categoryId=${e.target.value}`);
+  //   } else {
+  //     router.push(`/products-list?page=1`);
+  //   }
+  // };
   const handleMinPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = Number(e.target.value);
     const nextMin = Math.max(0, Math.min(raw, priceRange[1]));
@@ -638,6 +683,98 @@ function ProductsListContent() {
                   onChange={(e) => setSearch(e.target.value)}
                   className="w-full h-14 text-lg bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#F4D300] focus:border-[#F4D300] transition placeholder:text-gray-400 text-gray-900 font-medium shadow-lg pl-14 pr-14"
                 />
+                {openSuggest &&
+                  (suggestions.length > 0 ||
+                    kwSuggestions.length > 0 ||
+                    searchLoading) && (
+                    <div className="absolute z-20 mt-2 w-full bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
+                      {searchLoading && (
+                        <div className="px-4 py-3 text-sm text-gray-500">
+                          Searching…
+                        </div>
+                      )}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
+                        <div className="border-b md:border-b-0 md:border-r border-gray-100">
+                          <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                            Products
+                          </div>
+                          <ul className="max-h-72 overflow-auto">
+                            {searchLoading && (
+                              <li className="px-4 py-3 text-sm text-gray-500">
+                                Searching…
+                              </li>
+                            )}
+                            {!searchLoading &&
+                              suggestions.map((s) => (
+                                <li key={s.id} className="hover:bg-gray-50">
+                                  <a
+                                    href={`/product/${s.id}`}
+                                    className="flex items-center gap-3 px-4 py-3"
+                                    onClick={() => setOpenSuggest(false)}
+                                  >
+                                    <div className="w-10 h-10 rounded bg-gray-100 overflow-hidden flex items-center justify-center">
+                                      <img
+                                        src={
+                                          s.image_url ||
+                                          "/images/default-product.jpg"
+                                        }
+                                        alt=""
+                                        className="w-full h-full object-cover"
+                                      />
+                                    </div>
+                                    <div className="flex-1 text-sm font-medium text-gray-900">
+                                      {s.name}
+                                    </div>
+                                  </a>
+                                </li>
+                              ))}
+                            {!searchLoading && suggestions.length === 0 && (
+                              <li className="px-4 py-3 text-sm text-gray-500">
+                                No products
+                              </li>
+                            )}
+                          </ul>
+                        </div>
+                        <div>
+                          <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                            Keywords
+                          </div>
+                          <ul className="max-h-72 overflow-auto">
+                            {kwSuggestions.map((k) => (
+                              <li key={k.id} className="hover:bg-gray-50">
+                                <button
+                                  className="w-full text-left flex items-center gap-3 px-4 py-3"
+                                  onClick={() => {
+                                    const next = Array.from(
+                                      new Set([...selectedKeywordIds, k.id])
+                                    );
+                                    setSelectedKeywordIds(next);
+                                    setOpenSuggest(false);
+                                    pushWithParams({
+                                      page: 1,
+                                      keywordIds: next.join(","),
+                                    });
+                                  }}
+                                >
+                                  <div className="w-10 h-10 rounded bg-yellow-100 text-yellow-800 flex items-center justify-center text-sm font-semibold">
+                                    #
+                                  </div>
+                                  <div className="flex-1 text-sm font-medium text-gray-900">
+                                    {k.name}
+                                  </div>
+                                </button>
+                              </li>
+                            ))}
+                            {!searchLoading && kwSuggestions.length === 0 && (
+                              <li className="px-4 py-3 text-sm text-gray-500">
+                                No keywords
+                              </li>
+                            )}
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 {search && (
                   <button
                     type="button"
