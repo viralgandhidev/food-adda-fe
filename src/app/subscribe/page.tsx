@@ -57,8 +57,8 @@ const plans: {
   {
     code: "SILVER",
     label: "Silver",
-    priceDisplay: "₹6000 /Month",
-    amountPaise: 6000 * 100,
+    priceDisplay: "₹5,900 /Month (incl. GST)",
+    amountPaise: 5900 * 100,
     features: [
       { label: "Limited Photo Upload (Up to 3)", included: true },
       { label: "Access to Email Address", included: true },
@@ -73,8 +73,8 @@ const plans: {
   {
     code: "GOLD",
     label: "Gold",
-    priceDisplay: "₹10,000 /Month",
-    amountPaise: 10000 * 100,
+    priceDisplay: "₹10,620 /Month (incl. GST)",
+    amountPaise: 10620 * 100,
     features: [
       { label: "Unlimited Photos", included: true },
       { label: "Access to Email Address", included: true },
