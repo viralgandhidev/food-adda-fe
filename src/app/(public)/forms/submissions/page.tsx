@@ -169,7 +169,7 @@ function SubmissionsContent() {
   const gridCols = type === "RECRUITMENT" ? "md:grid-cols-2" : "md:grid-cols-3";
 
   return (
-    <div className="min-h-screen bg-[#FFFEF7] px-6 md:px-12 py-12">
+    <div className="min-h-screen bg-white px-6 md:px-12 py-12">
       <div className="flex items-end justify-between mb-6">
         <div>
           <h1 className="text-3xl font-extrabold text-[#181818]">

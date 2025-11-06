@@ -1,8 +1,8 @@
 "use client";
 // @ts-nocheck
 /* eslint-disable */
-import { useState } from "react";
-import { apiMultipart } from "@/lib/api";
+import { useEffect, useState, useCallback } from "react";
+import { api, apiMultipart } from "@/lib/api";
 import {
   textInputClass,
   selectClass,
@@ -56,232 +56,466 @@ function CountrySelect({
 }
 
 export default function FranchiseFormPage() {
+  type Tab = "BRAND" | "SEEKER";
+  const [activeTab, setActiveTab] = useState<Tab>("BRAND");
+  const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
   const [form, setForm] = useState<Record<string, string | FileList | boolean>>(
     {}
   );
+  const [submissions, setSubmissions] = useState<any[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loadingListings, setLoadingListings] = useState(true);
+
+  // Prefill email/phone from profile
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await api.get("/auth/me");
+        const p = res.data?.data;
+        setForm((prev) => ({
+          ...prev,
+          email: p?.email || (prev.email as string) || "",
+          phone: p?.phone_number || (prev.phone as string),
+        }));
+      } catch {}
+    })();
+  }, []);
 
   const submit = async () => {
     try {
       setLoading(true);
       const fd = new FormData();
+      // Temporary compatibility: keep form_type as FRANCHISE to match backend enum
+      // and send the specific kind in payload
       fd.append("form_type", "FRANCHISE");
-      fd.append("contact_name", form.company_name || form.name || "");
-      fd.append("contact_email", form.email || "");
-      fd.append("contact_phone", form.phone || "");
+      fd.append("franchise_kind", activeTab);
+      fd.append("contact_name", String(form.company_name || form.name || ""));
+      fd.append("contact_email", String(form.email || ""));
+      fd.append("contact_phone", String(form.phone || ""));
       Object.entries(form).forEach(([k, v]) => {
+        if (k === "agreed") return;
         if (v instanceof FileList)
           Array.from(v).forEach((f) => fd.append(k, f));
         else if (v !== undefined && v !== null) fd.append(k, String(v));
       });
       await apiMultipart.post("/forms/submit", fd);
-      setSubmitted(true);
+      setShowForm(false);
+      fetchSubmissions();
     } finally {
       setLoading(false);
     }
   };
 
+  const fetchSubmissions = useCallback(async () => {
+    try {
+      setLoadingListings(true);
+      const pageSize = 12;
+      // Fetch a larger window and filter client-side by franchise_kind
+      const res = await api.get("/forms/list", {
+        params: {
+          form_type: "FRANCHISE",
+          page: 1,
+          limit: 200,
+        },
+      });
+      const all: any[] = res.data?.data || [];
+      const filtered = all.filter((s) => {
+        const payload =
+          typeof s.payload === "string" ? JSON.parse(s.payload) : s.payload;
+        return (payload?.franchise_kind || "BRAND") === activeTab;
+      });
+      const total = filtered.length;
+      const totalPagesLocal = Math.max(1, Math.ceil(total / pageSize));
+      const start = (page - 1) * pageSize;
+      const end = start + pageSize;
+      setSubmissions(filtered.slice(start, end));
+      setTotalPages(totalPagesLocal);
+    } finally {
+      setLoadingListings(false);
+    }
+  }, [activeTab, page]);
+
+  useEffect(() => {
+    fetchSubmissions();
+  }, [fetchSubmissions]);
+
+  const BrandFields = (
+    <>
+      <Field label="Company/Brand Name">
+        <input
+          className={textInputClass}
+          onChange={(e) => setForm({ ...form, company_name: e.target.value })}
+          placeholder="Your brand"
+        />
+      </Field>
+      <Field label="Website">
+        <input
+          className={textInputClass}
+          onChange={(e) => setForm({ ...form, website: e.target.value })}
+          placeholder="https://"
+        />
+      </Field>
+      <Field label="Product/Brand Description">
+        <textarea
+          className={textAreaClass}
+          onChange={(e) => setForm({ ...form, description: e.target.value })}
+          placeholder="Describe your brand/products"
+        />
+      </Field>
+      <Field label="Preferred Location">
+        <input
+          className={textInputClass}
+          onChange={(e) =>
+            setForm({ ...form, preferred_location: e.target.value })
+          }
+          placeholder="Preferred location"
+        />
+      </Field>
+      <Field label="Upload Photos">
+        <input
+          type="file"
+          multiple
+          className={fileInputClass}
+          onChange={(e) => setForm({ ...form, photos: e.target.files as any })}
+        />
+      </Field>
+    </>
+  );
+
+  const SeekerFields = (
+    <>
+      <Field label="Name">
+        <input
+          className={textInputClass}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
+          placeholder="Your name"
+        />
+      </Field>
+      <Field label="Budget (INR)">
+        <input
+          type="number"
+          className={textInputClass}
+          onChange={(e) => setForm({ ...form, budget: e.target.value })}
+          placeholder="Your investment budget"
+        />
+      </Field>
+      <Field label="Preferred Location">
+        <input
+          className={textInputClass}
+          onChange={(e) =>
+            setForm({ ...form, preferred_location: e.target.value })
+          }
+          placeholder="Preferred location"
+        />
+      </Field>
+      <Field label="Industry/Category">
+        <input
+          className={textInputClass}
+          onChange={(e) => setForm({ ...form, category: e.target.value })}
+          placeholder="e.g., QSR, Cafe, FMCG"
+        />
+      </Field>
+      <Field label="Experience (Years)">
+        <input
+          type="number"
+          className={textInputClass}
+          onChange={(e) =>
+            setForm({ ...form, experience_years: e.target.value })
+          }
+          placeholder="Years of business experience"
+        />
+      </Field>
+    </>
+  );
+
+  const CommonFields = (
+    <>
+      <Field label="Address">
+        <input
+          className={textInputClass}
+          onChange={(e) => setForm({ ...form, address: e.target.value })}
+          placeholder="Address"
+        />
+      </Field>
+      <Field label="City">
+        <input
+          className={textInputClass}
+          onChange={(e) => setForm({ ...form, city: e.target.value })}
+          placeholder="City"
+        />
+      </Field>
+      <Field label="State">
+        <input
+          className={textInputClass}
+          onChange={(e) => setForm({ ...form, state: e.target.value })}
+          placeholder="State"
+        />
+      </Field>
+      <Field label="Country">
+        <CountrySelect
+          value={form.country as string}
+          onChange={(v) => setForm({ ...form, country: v })}
+        />
+      </Field>
+      <Field label="Google Location">
+        <input
+          className={textInputClass}
+          onChange={(e) => setForm({ ...form, location: e.target.value })}
+          placeholder="Link"
+        />
+      </Field>
+      <Field label="Email">
+        <input
+          className={textInputClass}
+          value={(form.email as string) || ""}
+          onChange={(e) => setForm({ ...form, email: e.target.value })}
+          placeholder="you@example.com"
+        />
+      </Field>
+      <Field label="Phone">
+        <input
+          className={textInputClass}
+          value={(form.phone as string) || ""}
+          onChange={(e) => setForm({ ...form, phone: e.target.value })}
+          placeholder="+1 555 000 0000"
+        />
+      </Field>
+      <Field label="WhatsApp No.">
+        <input
+          className={textInputClass}
+          onChange={(e) => setForm({ ...form, whatsapp: e.target.value })}
+          placeholder="WhatsApp"
+        />
+      </Field>
+    </>
+  );
+
+  const renderCard = (s: any) => {
+    const payload =
+      typeof s.payload === "string" ? JSON.parse(s.payload) : s.payload;
+    const title =
+      activeTab === "BRAND"
+        ? payload?.company_name || s.contact_name || "Brand"
+        : s.contact_name || payload?.name || "Franchise Seeker";
+
+    const files = (s.files || []) as Array<{
+      file_path?: string;
+      mime_type?: string;
+      original_name?: string;
+    }>;
+    const images = files.filter((f) => (f.mime_type || "").startsWith("image"));
+
+    const API_BASE_URL =
+      process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api/v1";
+    const BACKEND_BASE_URL = API_BASE_URL.replace(/\/api\/v1$/, "");
+    const getFullFileUrl = (p?: string) => {
+      if (!p) return undefined;
+      if (p.startsWith("http")) return p;
+      if (p.startsWith("/uploads/")) return `${BACKEND_BASE_URL}${p}`;
+      if (p.startsWith("uploads")) return `${BACKEND_BASE_URL}/${p}`;
+      return `${BACKEND_BASE_URL}/${p.replace(/^\//, "")}`;
+    };
+    const cover = images[0]?.file_path
+      ? getFullFileUrl(images[0]?.file_path)
+      : "/images/default-product.jpg";
+
+    return (
+      <div className="rounded-2xl border border-gray-200 bg-white shadow-sm hover:shadow-md transition overflow-hidden">
+        <div className="relative h-36 w-full bg-gray-50">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={cover}
+            alt={images[0]?.original_name || title}
+            className="h-full w-full object-cover"
+          />
+          <span className="absolute left-3 top-3 bg-white/90 backdrop-blur px-2 py-1 text-[10px] font-semibold rounded-full border border-yellow-200 text-[#111827]">
+            {activeTab === "BRAND" ? "BRAND" : "SEEKER"}
+          </span>
+        </div>
+        <div className="p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="text-sm font-semibold text-[#181818] line-clamp-1">
+              {title}
+            </div>
+            <div className="text-[11px] text-gray-500 whitespace-nowrap">
+              {new Date(s.created_at).toLocaleString()}
+            </div>
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-gray-700">
+            {payload?.city && (
+              <span className="px-2 py-0.5 rounded-full bg-gray-50 border border-gray-200">
+                {payload.city}
+              </span>
+            )}
+            {payload?.state && (
+              <span className="px-2 py-0.5 rounded-full bg-gray-50 border border-gray-200">
+                {payload.state}
+              </span>
+            )}
+            {payload?.country && (
+              <span className="px-2 py-0.5 rounded-full bg-gray-50 border border-gray-200">
+                {payload.country}
+              </span>
+            )}
+          </div>
+          <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-700">
+            {payload?.preferred_location && (
+              <div>Preferred: {payload.preferred_location}</div>
+            )}
+            {activeTab === "SEEKER" && payload?.budget && (
+              <div>Budget: ₹{payload.budget}</div>
+            )}
+            {payload?.email && (
+              <div className="truncate">Email: {payload.email}</div>
+            )}
+            {payload?.phone && (
+              <div className="truncate sm:text-right">
+                Phone: {payload.phone}
+              </div>
+            )}
+          </div>
+          {payload?.description && (
+            <p className="mt-2 text-xs text-gray-600 line-clamp-3">
+              {payload.description}
+            </p>
+          )}
+          {payload?.website && (
+            <a
+              href={String(payload.website)}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-3 inline-block text-xs text-blue-600 hover:underline"
+            >
+              Website
+            </a>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div className="min-h-screen bg-[#FFFEF7] flex items-start justify-center py-16">
-      <div className="w-full max-w-4xl">
-        <div className="flex items-baseline justify-between">
+    <div className="min-h-screen bg-white flex items-start justify-center py-16">
+      <div className="w-full max-w-5xl">
+        <div className="flex items-baseline justify-between mb-6">
           <div>
-            <h2 className="text-sm text-gray-500">Subscribe</h2>
+            <h2 className="text-sm text-gray-500">Browse</h2>
             <h1 className="text-4xl font-extrabold text-[#181818]">
               Franchise
             </h1>
           </div>
-          <a
-            href={`/forms/submissions?type=FRANCHISE`}
+          <button
+            onClick={() => setShowForm((v) => !v)}
             className="text-sm font-semibold text-[#111827] underline underline-offset-4"
           >
-            View submissions
-          </a>
+            {showForm ? "View Listings" : "Submit Form"}
+          </button>
         </div>
-        <p className="text-xs text-gray-500 mt-1">
-          Please fill out this form to subscribe with us.
-        </p>
 
-        <div className="bg-white rounded-2xl shadow p-6 mt-6">
-          <h3 className="text-sm font-semibold text-gray-900 mb-4">Details</h3>
-          {submitted ? (
-            <div className="text-green-700">
-              Thanks! We received your submission.
+        {/* Tabs */}
+        <div className="flex gap-4 border-b border-gray-300 mb-6">
+          {(["BRAND", "SEEKER"] as Tab[]).map((t) => (
+            <button
+              key={t}
+              onClick={() => {
+                setActiveTab(t);
+                setPage(1);
+              }}
+              className={`px-6 py-3 font-semibold transition-colors ${
+                activeTab === t
+                  ? "text-yellow-600 border-b-2 border-yellow-600"
+                  : "text-gray-400 hover:text-gray-600"
+              }`}
+            >
+              {t === "BRAND" ? "Brand" : "Franchise Seeker"}
+            </button>
+          ))}
+        </div>
+
+        {showForm ? (
+          <div className="bg-white rounded-2xl shadow p-6">
+            <h3 className="text-sm font-semibold text-gray-900 mb-4">
+              Details
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {activeTab === "BRAND" ? BrandFields : SeekerFields}
+              {CommonFields}
             </div>
-          ) : (
-            <>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Field label="Company/Brand Name">
-                  <input
-                    className={textInputClass}
-                    onChange={(e) =>
-                      setForm({ ...form, company_name: e.target.value })
-                    }
-                    placeholder="Your brand"
+            <div className="mt-6 flex items-center justify-between">
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  onChange={(e) =>
+                    setForm({ ...form, agreed: e.target.checked })
+                  }
+                />
+                <span>I read & agreed to the terms and conditions</span>
+              </label>
+              <button
+                disabled={loading || !form.agreed}
+                onClick={submit}
+                className="bg-[#F4D300] text-[#181818] font-semibold px-6 py-2 rounded-full shadow hover:bg-yellow-400"
+              >
+                {loading ? "Submitting..." : "Submit"}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {loadingListings ? (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-40 bg-white rounded-2xl border border-yellow-100 animate-pulse"
                   />
-                </Field>
-                <Field label="Website">
-                  <input
-                    className={textInputClass}
-                    onChange={(e) =>
-                      setForm({ ...form, website: e.target.value })
-                    }
-                    placeholder="https://"
-                  />
-                </Field>
-                <Field label="Address">
-                  <input
-                    className={textInputClass}
-                    onChange={(e) =>
-                      setForm({ ...form, address: e.target.value })
-                    }
-                    placeholder="Address"
-                  />
-                </Field>
-                <Field label="City">
-                  <input
-                    className={textInputClass}
-                    onChange={(e) => setForm({ ...form, city: e.target.value })}
-                    placeholder="City"
-                  />
-                </Field>
-                <Field label="State">
-                  <input
-                    className={textInputClass}
-                    onChange={(e) =>
-                      setForm({ ...form, state: e.target.value })
-                    }
-                    placeholder="State"
-                  />
-                </Field>
-                <Field label="Country">
-                  <CountrySelect
-                    value={form.country}
-                    onChange={(v) => setForm({ ...form, country: v })}
-                  />
-                </Field>
-                <Field label="Google Location">
-                  <input
-                    className={textInputClass}
-                    onChange={(e) =>
-                      setForm({ ...form, location: e.target.value })
-                    }
-                    placeholder="Link"
-                  />
-                </Field>
-                <Field label="Email">
-                  <input
-                    className={textInputClass}
-                    onChange={(e) =>
-                      setForm({ ...form, email: e.target.value })
-                    }
-                    placeholder="you@example.com"
-                  />
-                </Field>
-                <Field label="Phone">
-                  <input
-                    className={textInputClass}
-                    onChange={(e) =>
-                      setForm({ ...form, phone: e.target.value })
-                    }
-                    placeholder="+1 555 000 0000"
-                  />
-                </Field>
-                <Field label="WhatsApp No.">
-                  <input
-                    className={textInputClass}
-                    onChange={(e) =>
-                      setForm({ ...form, whatsapp: e.target.value })
-                    }
-                    placeholder="WhatsApp"
-                  />
-                </Field>
-                <Field label="GST No. (If any)">
-                  <input
-                    className={textInputClass}
-                    onChange={(e) => setForm({ ...form, gst: e.target.value })}
-                    placeholder="GSTIN"
-                  />
-                </Field>
-                <Field label="FSSAI No.">
-                  <input
-                    className={textInputClass}
-                    onChange={(e) =>
-                      setForm({ ...form, fssai: e.target.value })
-                    }
-                    placeholder="FSSAI"
-                  />
-                </Field>
-                <Field label="Product Description">
-                  <textarea
-                    className={textAreaClass}
-                    onChange={(e) =>
-                      setForm({ ...form, description: e.target.value })
-                    }
-                    placeholder="Describe your products"
-                  />
-                </Field>
-                <Field label="Preferred Location">
-                  <input
-                    className={textInputClass}
-                    onChange={(e) =>
-                      setForm({ ...form, preferred_location: e.target.value })
-                    }
-                    placeholder="Preferred location"
-                  />
-                </Field>
-                <Field label="Contact Person">
-                  <input
-                    className={textInputClass}
-                    onChange={(e) =>
-                      setForm({ ...form, contact_person: e.target.value })
-                    }
-                    placeholder="Full name"
-                  />
-                </Field>
-                <Field label="Category">
-                  <input
-                    className={textInputClass}
-                    onChange={(e) =>
-                      setForm({ ...form, category: e.target.value })
-                    }
-                    placeholder="Category"
-                  />
-                </Field>
-                <Field label="Upload Photos">
-                  <input
-                    type="file"
-                    multiple
-                    className={fileInputClass}
-                    onChange={(e) =>
-                      setForm({ ...form, photos: e.target.files })
-                    }
-                  />
-                </Field>
+                ))}
               </div>
-
-              <div className="mt-6 flex items-center justify-between">
-                <label className="flex items-center gap-2 text-sm text-gray-700">
-                  <input
-                    type="checkbox"
-                    onChange={(e) =>
-                      setForm({ ...form, agreed: e.target.checked })
-                    }
-                  />
-                  <span>I read & agreed to the terms and conditions</span>
-                </label>
-                <button
-                  disabled={loading || !form.agreed}
-                  onClick={submit}
-                  className="bg-[#F4D300] text-[#181818] font-semibold px-6 py-2 rounded-full shadow hover:bg-yellow-400"
-                >
-                  {loading ? "Submitting..." : "Submit"}
-                </button>
+            ) : submissions.length === 0 ? (
+              <div className="mt-16 flex flex-col items-center justify-center text-center">
+                <div className="w-20 h-20 rounded-full bg-yellow-100 flex items-center justify-center mb-4">
+                  <span className="text-2xl">📄</span>
+                </div>
+                <h2 className="text-xl font-semibold text-[#181818]">
+                  No submissions yet
+                </h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  Be the first to submit a{" "}
+                  {activeTab === "BRAND" ? "Brand" : "Seeker"} form!
+                </p>
               </div>
-            </>
-          )}
-        </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                  {submissions.map((s) => (
+                    <div key={s.id}>{renderCard(s)}</div>
+                  ))}
+                </div>
+                <div className="mt-8 flex items-center justify-center gap-3">
+                  <button
+                    className="px-4 py-2 rounded-full border border-gray-300 bg-white text-sm text-[#111827] shadow-sm hover:bg-gray-50 disabled:opacity-60"
+                    disabled={page <= 1}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  >
+                    Prev
+                  </button>
+                  <span className="text-sm font-medium text-[#111827]">
+                    {page} / {totalPages}
+                  </span>
+                  <button
+                    className="px-4 py-2 rounded-full border border-gray-300 bg-white text-sm text-[#111827] shadow-sm hover:bg-gray-50 disabled:opacity-60"
+                    disabled={page >= totalPages}
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  >
+                    Next
+                  </button>
+                </div>
+              </>
+            )}
+          </>
+        )}
       </div>
     </div>
   );

@@ -215,12 +215,20 @@ export default function Header() {
         {/* Dynamic Auth Buttons */}
         <div className="flex items-center gap-3">
           {isLoggedIn && (
-            <Link
-              href="/subscribe"
-              className="ml-6 px-6 py-2 rounded-full bg-[#F4D300] text-black font-semibold shadow hover:bg-yellow-400 transition"
-            >
-              Subscribe
-            </Link>
+            <>
+              <Link
+                href="/dashboard"
+                className="px-5 py-2 rounded-full bg-white border border-gray-300 text-[#1C1A1A] font-semibold shadow hover:bg-gray-50 transition"
+              >
+                Dashboard
+              </Link>
+              <Link
+                href="/subscribe"
+                className="ml-1 px-6 py-2 rounded-full bg-[#F4D300] text-black font-semibold shadow hover:bg-yellow-400 transition"
+              >
+                Subscribe
+              </Link>
+            </>
           )}
 
           {isLoggedIn ? (

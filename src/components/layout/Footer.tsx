@@ -89,7 +89,10 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link className="hover:text-white" href="#">
+                <Link
+                  className="hover:text-white"
+                  href={isLoggedIn ? "/subscribe" : "/pricing"}
+                >
                   Subscription
                 </Link>
               </li>
