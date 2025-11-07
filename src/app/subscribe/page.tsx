@@ -1211,13 +1211,13 @@ export default function SubscribePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0F0F0F] text-white">
+    <div className="min-h-screen bg-[#0F0F0F] text-white flex flex-col">
       <Script
         src="https://checkout.razorpay.com/v1/checkout.js"
         strategy="afterInteractive"
       />
       <Header />
-      <main className="max-w-7xl mx-auto px-4 pt-12 pb-20">
+      <main className="flex-1 max-w-7xl mx-auto px-4 pt-12 pb-20">
         {subLoading ? (
           <div>Loading subscription...</div>
         ) : isSubscribed ? (
