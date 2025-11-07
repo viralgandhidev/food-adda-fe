@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 
 import { useState, useEffect, useRef, Suspense } from "react";
 import * as Slider from "@radix-ui/react-slider";
@@ -61,7 +62,7 @@ function ProductsListContent() {
   const [allKeywords, setAllKeywords] = useState<
     { id: string; name: string }[]
   >([]);
-  const [selectedKeywordIds, setSelectedKeywordIds] = useState<string[]>([]);
+  const [selectedKeywordId, setSelectedKeywordId] = useState("");
   const [loading, setLoading] = useState(true);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
@@ -108,7 +109,7 @@ function ProductsListContent() {
     tab?: "products" | "suppliers";
     mainCategoryId?: string;
     subCategoryId?: string;
-    keywordIds?: string;
+    keywordId?: string | null | undefined;
   }) => {
     const usp = new URLSearchParams();
     usp.set("page", String(params.page ?? 1));
@@ -119,9 +120,10 @@ function ProductsListContent() {
     const subVal = params.subCategoryId ?? subCategory;
     if (subVal) usp.set("subCategoryId", subVal);
     const kwVal =
-      params.keywordIds ??
-      (selectedKeywordIds.length ? selectedKeywordIds.join(",") : undefined);
-    if (kwVal) usp.set("keywordIds", kwVal);
+      params.keywordId !== undefined
+        ? params.keywordId || undefined
+        : selectedKeywordId || undefined;
+    if (kwVal) usp.set("keywordId", kwVal);
     router.push(`/products-list?${usp.toString()}`);
   };
 
@@ -213,7 +215,7 @@ function ProductsListContent() {
     debouncedSearch,
     mainCategory,
     subCategory,
-    selectedKeywordIds,
+    selectedKeywordId,
     debouncedMinPrice,
     debouncedMaxPrice,
     isVeg,
@@ -231,18 +233,12 @@ function ProductsListContent() {
     const urlKws = searchParams.get("keywordIds") || "";
     if (urlMain !== mainCategory) setMainCategory(urlMain);
     if (urlSub !== subCategory) setSubCategory(urlSub || urlCategoryId);
-    const parsed = urlKws
-      ? urlKws.split(",").filter(Boolean)
-      : urlKw
-      ? [urlKw]
-      : [];
-    // Only set if different to avoid loops
-    if (
-      parsed.length !== selectedKeywordIds.length ||
-      parsed.some((id, i) => id !== selectedKeywordIds[i])
-    ) {
-      setSelectedKeywordIds(parsed);
+    const parsed =
+      urlKw || (urlKws ? urlKws.split(",").filter(Boolean)[0] || "" : "");
+    if (parsed !== selectedKeywordId) {
+      setSelectedKeywordId(parsed);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   // Keep tab in sync with URL
@@ -264,8 +260,7 @@ function ProductsListContent() {
       if (debouncedSearch) params.q = debouncedSearch;
       if (mainCategory) params.mainCategoryId = mainCategory;
       if (subCategory) params.subCategoryId = subCategory;
-      if (selectedKeywordIds.length)
-        params.keywordIds = selectedKeywordIds.join(",");
+      if (selectedKeywordId) params.keywordId = selectedKeywordId;
       if (debouncedMinPrice) params.minPrice = debouncedMinPrice;
       if (debouncedMaxPrice) params.maxPrice = debouncedMaxPrice;
       if (isVeg)
@@ -301,8 +296,7 @@ function ProductsListContent() {
       if (debouncedSearch) params.q = debouncedSearch;
       if (mainCategory) params.mainCategoryId = mainCategory;
       if (subCategory) params.subCategoryId = subCategory;
-      if (selectedKeywordIds.length)
-        params.keywordIds = selectedKeywordIds.join(",");
+      if (selectedKeywordId) params.keywordId = selectedKeywordId;
       if (debouncedMinPrice) params.minPrice = debouncedMinPrice;
       if (debouncedMaxPrice) params.maxPrice = debouncedMaxPrice;
       if (isVeg)
@@ -457,7 +451,7 @@ function ProductsListContent() {
                 </h4>
                 <div className="max-h-56 overflow-auto rounded-lg border border-gray-200 p-2 bg-gray-50">
                   {allKeywords.map((k) => {
-                    const checked = selectedKeywordIds.includes(k.id);
+                    const checked = selectedKeywordId === k.id;
                     return (
                       <label
                         key={k.id}
@@ -467,15 +461,11 @@ function ProductsListContent() {
                           type="checkbox"
                           checked={checked}
                           onChange={(e) => {
-                            const next = e.target.checked
-                              ? [...selectedKeywordIds, k.id]
-                              : selectedKeywordIds.filter((id) => id !== k.id);
-                            setSelectedKeywordIds(next);
+                            const next = e.target.checked ? k.id : "";
+                            setSelectedKeywordId(next);
                             pushWithParams({
                               page: 1,
-                              keywordIds: next.length
-                                ? next.join(",")
-                                : undefined,
+                              keywordId: next || undefined,
                             });
                           }}
                           className="h-4 w-4 accent-yellow-400"
@@ -485,41 +475,25 @@ function ProductsListContent() {
                     );
                   })}
                 </div>
-                {selectedKeywordIds.length > 0 && (
+                {selectedKeywordId && (
                   <div className="flex flex-wrap gap-2 mt-2">
-                    {selectedKeywordIds.map((id) => {
-                      const kw = allKeywords.find((k) => k.id === id);
+                    {(() => {
+                      const kw = allKeywords.find(
+                        (item) => item.id === selectedKeywordId
+                      );
                       if (!kw) return null;
                       return (
                         <button
-                          key={id}
                           onClick={() => {
-                            const next = selectedKeywordIds.filter(
-                              (kid) => kid !== id
-                            );
-                            setSelectedKeywordIds(next);
-                            pushWithParams({
-                              page: 1,
-                              keywordIds: next.length
-                                ? next.join(",")
-                                : undefined,
-                            });
+                            setSelectedKeywordId("");
+                            pushWithParams({ page: 1, keywordId: undefined });
                           }}
                           className="px-2 py-1 rounded-full border border-yellow-300 bg-yellow-100 text-yellow-800 text-xs"
                         >
                           {kw.name} ×
                         </button>
                       );
-                    })}
-                    <button
-                      onClick={() => {
-                        setSelectedKeywordIds([]);
-                        pushWithParams({ page: 1, keywordIds: undefined });
-                      }}
-                      className="px-2 py-1 rounded-full border border-gray-300 bg-gray-100 text-gray-700 text-xs"
-                    >
-                      Clear keywords
-                    </button>
+                    })()}
                   </div>
                 )}
               </div>
@@ -745,14 +719,11 @@ function ProductsListContent() {
                                 <button
                                   className="w-full text-left flex items-center gap-3 px-4 py-3"
                                   onClick={() => {
-                                    const next = Array.from(
-                                      new Set([...selectedKeywordIds, k.id])
-                                    );
-                                    setSelectedKeywordIds(next);
+                                    setSelectedKeywordId(k.id);
                                     setOpenSuggest(false);
                                     pushWithParams({
                                       page: 1,
-                                      keywordIds: next.join(","),
+                                      keywordId: k.id,
                                     });
                                   }}
                                 >

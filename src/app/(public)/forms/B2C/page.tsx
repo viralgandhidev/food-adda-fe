@@ -12,6 +12,7 @@ import {
 import { useAuthStore } from "@/store/auth";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 type FormValue = string | FileList | boolean | undefined;
 type FormData = Record<string, FormValue>;
@@ -81,6 +82,7 @@ function CountrySelect({
 export default function B2CFormPage() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
+  const token = useAuthStore((state) => state.token);
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -93,7 +95,7 @@ export default function B2CFormPage() {
   const [allKeywords, setAllKeywords] = useState<
     { id: string; name: string }[]
   >([]);
-  const [selectedKeywordIds, setSelectedKeywordIds] = useState<string[]>([]);
+  const [selectedKeywordId, setSelectedKeywordId] = useState("");
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [isVeg, setIsVeg] = useState("");
@@ -105,9 +107,31 @@ export default function B2CFormPage() {
     email?: string;
     phone_number?: string;
   }>({});
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const loginHref = `/login?next=${encodeURIComponent("/forms/B2C")}`;
 
-  // Always attempt to pre-fill email and phone on mount
   useEffect(() => {
+    if (token) {
+      setIsLoggedIn(true);
+      return;
+    }
+    try {
+      if (typeof window !== "undefined") {
+        setIsLoggedIn(Boolean(localStorage.getItem("token")));
+      } else {
+        setIsLoggedIn(false);
+      }
+    } catch {
+      setIsLoggedIn(false);
+    }
+  }, [token]);
+
+  // Always attempt to pre-fill email and phone when logged in
+  useEffect(() => {
+    if (!isLoggedIn) {
+      setUserProfile({ email: user?.email });
+      return;
+    }
     const run = async () => {
       try {
         const res = await api.get("/auth/me");
@@ -121,7 +145,7 @@ export default function B2CFormPage() {
       }
     };
     run();
-  }, []);
+  }, [isLoggedIn, user?.email]);
 
   // Pre-fill form with user data
   useEffect(() => {
@@ -175,6 +199,13 @@ export default function B2CFormPage() {
   const fetchSuppliers = useCallback(async () => {
     try {
       setLoadingSuppliers(true);
+      if (!isLoggedIn) {
+        setSuppliers([]);
+        setTotal(0);
+        setTotalPages(1);
+        setLoadingSuppliers(false);
+        return;
+      }
       const params: Record<string, string | number | boolean | undefined> = {
         page,
         limit: 20,
@@ -182,8 +213,7 @@ export default function B2CFormPage() {
       };
       if (mainCategory) params.mainCategoryId = mainCategory;
       if (subCategory) params.subCategoryId = subCategory;
-      if (selectedKeywordIds.length)
-        params.keywordIds = selectedKeywordIds.join(",");
+      if (selectedKeywordId) params.keywordId = selectedKeywordId;
       if (minPrice) params.minPrice = minPrice;
       if (maxPrice) params.maxPrice = maxPrice;
       if (isVeg)
@@ -203,10 +233,11 @@ export default function B2CFormPage() {
     page,
     mainCategory,
     subCategory,
-    selectedKeywordIds,
+    selectedKeywordId,
     minPrice,
     maxPrice,
     isVeg,
+    isLoggedIn,
   ]);
 
   useEffect(() => {
@@ -543,6 +574,23 @@ export default function B2CFormPage() {
               </>
             )}
           </div>
+        ) : !isLoggedIn ? (
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-lg p-10 text-center flex flex-col items-center gap-4 mt-6">
+            <span className="text-4xl">🔐</span>
+            <h3 className="text-2xl font-semibold text-gray-900">
+              Log in to view B2C listings
+            </h3>
+            <p className="text-sm text-gray-600 max-w-md">
+              Sign in to discover consumer-ready suppliers and unlock full
+              contact details.
+            </p>
+            <Link
+              href={loginHref}
+              className="px-6 py-2 rounded-full bg-[#F4D300] text-[#181818] font-semibold shadow hover:bg-yellow-400 transition"
+            >
+              Log in to continue
+            </Link>
+          </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             {/* Filters Sidebar */}
@@ -602,7 +650,7 @@ export default function B2CFormPage() {
                   </h4>
                   <div className="max-h-56 overflow-auto rounded-lg border border-gray-200 p-2 bg-gray-50">
                     {allKeywords.map((k) => {
-                      const checked = selectedKeywordIds.includes(k.id);
+                      const checked = selectedKeywordId === k.id;
                       return (
                         <label
                           key={k.id}
@@ -612,12 +660,8 @@ export default function B2CFormPage() {
                             type="checkbox"
                             checked={checked}
                             onChange={(e) => {
-                              const next = e.target.checked
-                                ? [...selectedKeywordIds, k.id]
-                                : selectedKeywordIds.filter(
-                                    (id) => id !== k.id
-                                  );
-                              setSelectedKeywordIds(next);
+                              const next = e.target.checked ? k.id : "";
+                              setSelectedKeywordId(next);
                               setPage(1);
                             }}
                             className="h-4 w-4 accent-yellow-400"

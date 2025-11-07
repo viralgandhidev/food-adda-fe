@@ -18,6 +18,18 @@ import {
 
 type PlanCode = "SILVER" | "GOLD";
 
+// kept for legacy one-time orders (unused with recurring flow)
+
+type RazorpayHandlerResponse = {
+  razorpay_payment_id: string;
+  razorpay_order_id: string;
+  razorpay_signature: string;
+};
+type RazorpaySubAuthResponse = {
+  razorpay_payment_id: string;
+  razorpay_subscription_id: string;
+  razorpay_signature: string;
+};
 type RazorpayOrder = {
   id: string;
   amount: number;
@@ -25,20 +37,16 @@ type RazorpayOrder = {
   receipt: string;
 };
 
-type RazorpayHandlerResponse = {
-  razorpay_payment_id: string;
-  razorpay_order_id: string;
-  razorpay_signature: string;
-};
-
 type RazorpayOptions = {
   key: string;
-  amount: number;
-  currency: string;
   name: string;
   description: string;
-  order_id: string;
-  handler: (response: RazorpayHandlerResponse) => void;
+  // One-time orders use order_id; subscriptions use subscription_id
+  order_id?: string;
+  subscription_id?: string;
+  handler: (
+    response: RazorpayHandlerResponse | RazorpaySubAuthResponse
+  ) => void;
   theme?: { color?: string };
   prefill?: Record<string, string>;
 };
@@ -95,7 +103,7 @@ const plans: {
   },
 ];
 
-type FormType = "B2B" | "B2C" | "HORECA";
+type FormType = "B2B" | "B2C" | "HORECA" | "FRANCHISE" | "RECRUITMENT";
 type FormValue = string | FileList | boolean | undefined;
 type FormData = Record<string, FormValue>;
 
@@ -707,6 +715,16 @@ export default function SubscribePage() {
   const user = useAuthStore((state) => state.user);
   const [loadingPlan, setLoadingPlan] = useState<PlanCode | null>(null);
   const [activeTab, setActiveTab] = useState<FormType>("B2B");
+  type SubscriptionRecord = {
+    id: number;
+    plan_code: PlanCode;
+    plan_label?: string;
+    status: "ACTIVE" | "PENDING_PAYMENT" | "FAILED" | "CANCELLED";
+    created_at: string;
+    razorpay_payment_id?: string;
+  } | null;
+  const [subscription, setSubscription] = useState<SubscriptionRecord>(null);
+  const [subLoading, setSubLoading] = useState(true);
   const [formStatus, setFormStatus] = useState<{
     hasForm: boolean;
     loading: boolean;
@@ -720,11 +738,15 @@ export default function SubscribePage() {
     B2B: {},
     B2C: {},
     HORECA: {},
+    FRANCHISE: {},
+    RECRUITMENT: {},
   });
   const [formLoading, setFormLoading] = useState<Record<FormType, boolean>>({
     B2B: false,
     B2C: false,
     HORECA: false,
+    FRANCHISE: false,
+    RECRUITMENT: false,
   });
   const [alsoB2C, setAlsoB2C] = useState(false);
   const [alsoB2B, setAlsoB2B] = useState(false);
@@ -775,8 +797,10 @@ export default function SubscribePage() {
     if (userProfile.email || userProfile.phone_number) {
       setFormData((prev) => {
         const updated = { ...prev };
-        // Pre-fill all forms (B2B, B2C, HORECA) with user data
-        (["B2B", "B2C", "HORECA"] as FormType[]).forEach((formType) => {
+        // Pre-fill all forms with user data
+        (
+          ["B2B", "B2C", "HORECA", "FRANCHISE", "RECRUITMENT"] as FormType[]
+        ).forEach((formType) => {
           updated[formType] = {
             ...(updated[formType] || {}),
             // Always set email and phone if available, even if form already has values
@@ -826,6 +850,26 @@ export default function SubscribePage() {
     checkFormStatus();
   }, [router]);
 
+  // Fetch current subscription
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await api.get("/subscriptions/me");
+        setSubscription(res.data?.data || null);
+      } catch {
+        // ignore 401 here; subscribe page will redirect on interactions
+        setSubscription(null);
+      } finally {
+        setSubLoading(false);
+      }
+    })();
+  }, []);
+
+  const isSubscribed =
+    !!subscription &&
+    (subscription.status === "ACTIVE" ||
+      subscription.status === "PENDING_PAYMENT");
+
   const submitForm = useCallback(
     async (formType: FormType) => {
       try {
@@ -854,6 +898,25 @@ export default function SubscribePage() {
           );
           fd.append("contact_email", String(form.email || ""));
           fd.append("contact_phone", String(form.phone || ""));
+        } else if (formType === "FRANCHISE") {
+          fd.append(
+            "contact_name",
+            String(form.name || form.company_name || "")
+          );
+          fd.append("contact_email", String(form.email || ""));
+          fd.append("contact_phone", String(form.phone || ""));
+          fd.append(
+            "franchise_kind",
+            String((form.franchise_kind as string) || "BRAND")
+          );
+        } else if (formType === "RECRUITMENT") {
+          fd.append("contact_name", String(form.name || ""));
+          fd.append("contact_email", String(form.email || ""));
+          fd.append("contact_phone", String(form.phone || ""));
+          fd.append(
+            "recruitment_kind",
+            String((form.recruitment_kind as string) || "EMPLOYER")
+          );
         }
 
         Object.entries(form).forEach(([k, v]) => {
@@ -955,9 +1018,9 @@ export default function SubscribePage() {
     async (plan: PlanCode) => {
       try {
         setLoadingPlan(plan);
-        // Initiate order
-        const { data } = await api.post("/subscriptions/checkout", { plan });
-        const order: RazorpayOrder = data.data.order;
+        // Initiate recurring subscription
+        const { data } = await api.post("/subscriptions/start", { plan });
+        const sub = data.data.subscription;
         const keyId: string = data.data.keyId;
 
         if (!window.Razorpay) {
@@ -967,14 +1030,24 @@ export default function SubscribePage() {
 
         const options: RazorpayOptions = {
           key: keyId,
-          amount: order.amount,
-          currency: order.currency,
           name: "FoodAdda.in",
           description: `${plan} Subscription`,
-          order_id: order.id,
-          handler: async (response: RazorpayHandlerResponse) => {
+          subscription_id: sub.id,
+          handler: async (
+            response: RazorpayHandlerResponse | RazorpaySubAuthResponse
+          ) => {
             try {
-              await api.post("/subscriptions/verify", response);
+              // For subscription flow we expect subscription_id
+              const payload =
+                "razorpay_subscription_id" in response
+                  ? response
+                  : ({
+                      razorpay_payment_id: response.razorpay_payment_id,
+                      // fallback: order flow does not apply; send empty subscription id to fail fast
+                      razorpay_subscription_id: "",
+                      razorpay_signature: response.razorpay_signature,
+                    } as RazorpaySubAuthResponse);
+              await api.post("/subscriptions/authorize/verify", payload);
               toast.success("Subscription activated!");
               router.push("/dashboard");
             } catch {
@@ -1002,6 +1075,19 @@ export default function SubscribePage() {
           typeof err.response.data.code === "string"
             ? err.response.data.code
             : undefined;
+        const message: string | undefined =
+          err &&
+          typeof err === "object" &&
+          "response" in err &&
+          err.response &&
+          typeof err.response === "object" &&
+          "data" in err.response &&
+          err.response.data &&
+          typeof err.response.data === "object" &&
+          "message" in err.response.data &&
+          typeof err.response.data.message === "string"
+            ? err.response.data.message
+            : undefined;
         if (code === "FORM_REQUIRED") {
           setShowForms(true);
           return;
@@ -1009,6 +1095,50 @@ export default function SubscribePage() {
         if (code === "APPROVAL_REQUIRED") {
           toast.message("Your form is pending admin approval");
           return;
+        }
+        // Fallback to one-time order flow when recurring plans aren't configured/approved yet
+        if (message === "Plan not configured") {
+          try {
+            const { data } = await api.post("/subscriptions/checkout", {
+              plan,
+            });
+            const order: RazorpayOrder = data.data.order;
+            const keyId: string = data.data.keyId;
+            if (!window.Razorpay) {
+              toast.error("Payment SDK not loaded. Please retry.");
+              return;
+            }
+            const options: RazorpayOptions = {
+              key: keyId,
+              name: "FoodAdda.in",
+              description: `${plan} Subscription`,
+              order_id: order.id,
+              handler: async (
+                response: RazorpayHandlerResponse | RazorpaySubAuthResponse
+              ) => {
+                try {
+                  // In order flow we expect order fields; if not present, fail
+                  if ("razorpay_order_id" in response) {
+                    await api.post("/subscriptions/verify", response);
+                  } else {
+                    throw new Error("Invalid response for order payment");
+                  }
+                  toast.success("Subscription activated!");
+                  router.push("/dashboard");
+                } catch {
+                  toast.error("Payment verification failed");
+                }
+              },
+              theme: { color: "#facc15" },
+              prefill: {},
+            };
+            const RazorpayCtor = window.Razorpay as RazorpayConstructor;
+            const rzp = new RazorpayCtor(options);
+            rzp.open();
+            return;
+          } catch {
+            // fall-through to generic error
+          }
         }
         if (
           err &&
@@ -1039,10 +1169,14 @@ export default function SubscribePage() {
         </div>
         <button
           onClick={() => startCheckout(p.code)}
-          disabled={loadingPlan === p.code}
+          disabled={loadingPlan === p.code || isSubscribed}
           className="mt-4 w-full rounded-md bg-yellow-400 hover:bg-yellow-500 text-black font-semibold py-2 disabled:opacity-60"
         >
-          {loadingPlan === p.code ? "Starting..." : "Subscribe"}
+          {isSubscribed
+            ? "Already Subscribed"
+            : loadingPlan === p.code
+            ? "Starting..."
+            : "Subscribe"}
         </button>
         <ul className="mt-6 space-y-3 text-sm">
           {p.features.map((f) => (
@@ -1065,7 +1199,7 @@ export default function SubscribePage() {
         </ul>
       </div>
     ),
-    [loadingPlan, startCheckout]
+    [loadingPlan, startCheckout, isSubscribed]
   );
 
   if (formStatus.loading) {
@@ -1084,7 +1218,50 @@ export default function SubscribePage() {
       />
       <Header />
       <main className="max-w-7xl mx-auto px-4 pt-12 pb-20">
-        {showForms ? (
+        {subLoading ? (
+          <div>Loading subscription...</div>
+        ) : isSubscribed ? (
+          <div className="max-w-3xl mx-auto bg-white text-gray-900 rounded-2xl shadow p-6">
+            <h2 className="text-xl font-bold">Your Subscription</h2>
+            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+              <div>
+                <span className="text-gray-500">Plan:</span>{" "}
+                {subscription.plan_label || subscription.plan_code}
+              </div>
+              <div>
+                <span className="text-gray-500">Status:</span>{" "}
+                {subscription.status}
+              </div>
+              <div>
+                <span className="text-gray-500">Started:</span>{" "}
+                {new Date(subscription.created_at).toLocaleString()}
+              </div>
+              <div>
+                <span className="text-gray-500">Next renewal:</span>{" "}
+                {new Date(
+                  new Date(subscription.created_at).getTime() +
+                    30 * 24 * 60 * 60 * 1000
+                ).toLocaleDateString()}
+              </div>
+              {subscription.razorpay_payment_id && (
+                <div className="sm:col-span-2">
+                  <span className="text-gray-500">Payment ID:</span>{" "}
+                  {subscription.razorpay_payment_id}
+                </div>
+              )}
+            </div>
+            <p className="mt-4 text-sm text-gray-600">
+              You already have an active subscription. Only one active
+              subscription is allowed at a time.
+            </p>
+            <button
+              onClick={() => router.push("/dashboard")}
+              className="mt-6 inline-flex rounded-full bg-[#F4D300] px-6 py-2 font-semibold text-[#181818]"
+            >
+              Go to dashboard
+            </button>
+          </div>
+        ) : showForms ? (
           <div className="max-w-5xl mx-auto">
             <div className="mb-8">
               <h1 className="text-3xl md:text-4xl font-bold leading-tight">
@@ -1098,7 +1275,15 @@ export default function SubscribePage() {
 
             {/* Tabs */}
             <div className="flex gap-4 mb-6 border-b border-gray-700">
-              {(["B2B", "B2C", "HORECA"] as FormType[]).map((tab) => (
+              {(
+                [
+                  "B2B",
+                  "B2C",
+                  "HORECA",
+                  "FRANCHISE",
+                  "RECRUITMENT",
+                ] as FormType[]
+              ).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -1146,6 +1331,258 @@ export default function SubscribePage() {
                   onSubmit={() => submitForm("HORECA")}
                   loading={formLoading.HORECA}
                 />
+              )}
+              {activeTab === "FRANCHISE" && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Field label="Type">
+                    <select
+                      className={selectClass}
+                      value={
+                        (formData.FRANCHISE.franchise_kind as string) || "BRAND"
+                      }
+                      onChange={(e) =>
+                        setFormData((p) => ({
+                          ...p,
+                          FRANCHISE: {
+                            ...p.FRANCHISE,
+                            franchise_kind: e.target.value,
+                          },
+                        }))
+                      }
+                    >
+                      <option value="BRAND">Brand</option>
+                      <option value="SEEKER">Franchise Seeker</option>
+                    </select>
+                  </Field>
+                  <Field label="Name / Company">
+                    <input
+                      className={textInputClass}
+                      value={(formData.FRANCHISE.name as string) || ""}
+                      onChange={(e) =>
+                        setFormData((p) => ({
+                          ...p,
+                          FRANCHISE: { ...p.FRANCHISE, name: e.target.value },
+                        }))
+                      }
+                      placeholder="Your brand or name"
+                    />
+                  </Field>
+                  <Field label="Email">
+                    <input
+                      className={textInputClass}
+                      value={(formData.FRANCHISE.email as string) || ""}
+                      onChange={(e) =>
+                        setFormData((p) => ({
+                          ...p,
+                          FRANCHISE: { ...p.FRANCHISE, email: e.target.value },
+                        }))
+                      }
+                      placeholder="you@example.com"
+                    />
+                  </Field>
+                  <Field label="Phone">
+                    <input
+                      className={textInputClass}
+                      value={(formData.FRANCHISE.phone as string) || ""}
+                      onChange={(e) =>
+                        setFormData((p) => ({
+                          ...p,
+                          FRANCHISE: { ...p.FRANCHISE, phone: e.target.value },
+                        }))
+                      }
+                      placeholder="+91…"
+                    />
+                  </Field>
+                  <Field label="Website (optional)">
+                    <input
+                      className={textInputClass}
+                      value={(formData.FRANCHISE.website as string) || ""}
+                      onChange={(e) =>
+                        setFormData((p) => ({
+                          ...p,
+                          FRANCHISE: {
+                            ...p.FRANCHISE,
+                            website: e.target.value,
+                          },
+                        }))
+                      }
+                      placeholder="https://"
+                    />
+                  </Field>
+                  <Field label="Description">
+                    <textarea
+                      className={textAreaClass}
+                      value={(formData.FRANCHISE.description as string) || ""}
+                      onChange={(e) =>
+                        setFormData((p) => ({
+                          ...p,
+                          FRANCHISE: {
+                            ...p.FRANCHISE,
+                            description: e.target.value,
+                          },
+                        }))
+                      }
+                      placeholder="Tell us about brand/opportunity"
+                    />
+                  </Field>
+                  <div className="md:col-span-2 flex items-center justify-between">
+                    <label className="flex items-center gap-2 text-sm text-gray-300">
+                      <input
+                        type="checkbox"
+                        onChange={(e) =>
+                          setFormData((p) => ({
+                            ...p,
+                            FRANCHISE: {
+                              ...p.FRANCHISE,
+                              agreed: e.target.checked,
+                            },
+                          }))
+                        }
+                      />
+                      <span>I agree to Terms & Conditions</span>
+                    </label>
+                    <button
+                      onClick={() => submitForm("FRANCHISE")}
+                      disabled={
+                        formLoading.FRANCHISE || !formData.FRANCHISE.agreed
+                      }
+                      className="bg-yellow-400 text-black font-semibold px-6 py-2 rounded-full shadow hover:bg-yellow-500 disabled:opacity-60"
+                    >
+                      {formLoading.FRANCHISE ? "Submitting..." : "Submit"}
+                    </button>
+                  </div>
+                </div>
+              )}
+              {activeTab === "RECRUITMENT" && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Field label="Type">
+                    <select
+                      className={selectClass}
+                      value={
+                        (formData.RECRUITMENT.recruitment_kind as string) ||
+                        "EMPLOYER"
+                      }
+                      onChange={(e) =>
+                        setFormData((p) => ({
+                          ...p,
+                          RECRUITMENT: {
+                            ...p.RECRUITMENT,
+                            recruitment_kind: e.target.value,
+                          },
+                        }))
+                      }
+                    >
+                      <option value="EMPLOYER">Employer</option>
+                      <option value="EMPLOYEE">Employee</option>
+                    </select>
+                  </Field>
+                  <Field label="Name / Company">
+                    <input
+                      className={textInputClass}
+                      value={(formData.RECRUITMENT.name as string) || ""}
+                      onChange={(e) =>
+                        setFormData((p) => ({
+                          ...p,
+                          RECRUITMENT: {
+                            ...p.RECRUITMENT,
+                            name: e.target.value,
+                          },
+                        }))
+                      }
+                      placeholder="Your name or company"
+                    />
+                  </Field>
+                  <Field label="Email">
+                    <input
+                      className={textInputClass}
+                      value={(formData.RECRUITMENT.email as string) || ""}
+                      onChange={(e) =>
+                        setFormData((p) => ({
+                          ...p,
+                          RECRUITMENT: {
+                            ...p.RECRUITMENT,
+                            email: e.target.value,
+                          },
+                        }))
+                      }
+                      placeholder="you@example.com"
+                    />
+                  </Field>
+                  <Field label="Phone">
+                    <input
+                      className={textInputClass}
+                      value={(formData.RECRUITMENT.phone as string) || ""}
+                      onChange={(e) =>
+                        setFormData((p) => ({
+                          ...p,
+                          RECRUITMENT: {
+                            ...p.RECRUITMENT,
+                            phone: e.target.value,
+                          },
+                        }))
+                      }
+                      placeholder="+91…"
+                    />
+                  </Field>
+                  <Field label="Role / Profile Title">
+                    <input
+                      className={textInputClass}
+                      value={(formData.RECRUITMENT.role_title as string) || ""}
+                      onChange={(e) =>
+                        setFormData((p) => ({
+                          ...p,
+                          RECRUITMENT: {
+                            ...p.RECRUITMENT,
+                            role_title: e.target.value,
+                          },
+                        }))
+                      }
+                      placeholder="e.g., Store Manager"
+                    />
+                  </Field>
+                  <Field label="Description">
+                    <textarea
+                      className={textAreaClass}
+                      value={(formData.RECRUITMENT.description as string) || ""}
+                      onChange={(e) =>
+                        setFormData((p) => ({
+                          ...p,
+                          RECRUITMENT: {
+                            ...p.RECRUITMENT,
+                            description: e.target.value,
+                          },
+                        }))
+                      }
+                      placeholder="Job details or profile summary"
+                    />
+                  </Field>
+                  <div className="md:col-span-2 flex items-center justify-between">
+                    <label className="flex items-center gap-2 text-sm text-gray-300">
+                      <input
+                        type="checkbox"
+                        onChange={(e) =>
+                          setFormData((p) => ({
+                            ...p,
+                            RECRUITMENT: {
+                              ...p.RECRUITMENT,
+                              agreed: e.target.checked,
+                            },
+                          }))
+                        }
+                      />
+                      <span>I agree to Terms & Conditions</span>
+                    </label>
+                    <button
+                      onClick={() => submitForm("RECRUITMENT")}
+                      disabled={
+                        formLoading.RECRUITMENT || !formData.RECRUITMENT.agreed
+                      }
+                      className="bg-yellow-400 text-black font-semibold px-6 py-2 rounded-full shadow hover:bg-yellow-500 disabled:opacity-60"
+                    >
+                      {formLoading.RECRUITMENT ? "Submitting..." : "Submit"}
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
           </div>

@@ -1,13 +1,15 @@
 "use client";
 // @ts-nocheck
 /* eslint-disable */
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { apiMultipart } from "@/lib/api";
 import {
   textInputClass,
   selectClass,
   textAreaClass,
 } from "@/components/forms/fieldClasses";
+import { useAuthStore } from "@/store/auth";
+import Link from "next/link";
 
 function Field({
   label,
@@ -55,11 +57,30 @@ function CountrySelect({
 }
 
 export default function QuoteRequestFormPage() {
+  const token = useAuthStore((state) => state.token);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [form, setForm] = useState<Record<string, string | FileList | boolean>>(
     {}
   );
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const loginHref = `/login?next=${encodeURIComponent("/forms/Quote-Request")}`;
+
+  useEffect(() => {
+    if (token) {
+      setIsLoggedIn(true);
+      return;
+    }
+    try {
+      if (typeof window !== "undefined") {
+        setIsLoggedIn(Boolean(localStorage.getItem("token")));
+      } else {
+        setIsLoggedIn(false);
+      }
+    } catch {
+      setIsLoggedIn(false);
+    }
+  }, [token]);
 
   const submit = async () => {
     try {
@@ -102,94 +123,121 @@ export default function QuoteRequestFormPage() {
           Please fill out this form to subscribe with us.
         </p>
 
-        <div className="bg-white rounded-2xl shadow p-6 mt-6">
-          <h3 className="text-sm font-semibold text-gray-900 mb-4">Details</h3>
-          {submitted ? (
-            <div className="text-green-700">
-              Thanks! We received your submission.
-            </div>
-          ) : (
-            <>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Field label="Name / Company">
-                  <input
-                    className={textInputClass}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    placeholder="Your name or company"
-                  />
-                </Field>
-                <Field label="Email">
-                  <input
-                    className={textInputClass}
-                    onChange={(e) =>
-                      setForm({ ...form, email: e.target.value })
-                    }
-                    placeholder="you@example.com"
-                  />
-                </Field>
-                <Field label="Phone">
-                  <input
-                    className={textInputClass}
-                    onChange={(e) =>
-                      setForm({ ...form, phone: e.target.value })
-                    }
-                    placeholder="+1 555 000 0000"
-                  />
-                </Field>
-                <Field label="City">
-                  <input
-                    className={textInputClass}
-                    onChange={(e) => setForm({ ...form, city: e.target.value })}
-                    placeholder="City"
-                  />
-                </Field>
-                <Field label="State">
-                  <input
-                    className={textInputClass}
-                    onChange={(e) =>
-                      setForm({ ...form, state: e.target.value })
-                    }
-                    placeholder="State"
-                  />
-                </Field>
-                <Field label="Country">
-                  <CountrySelect
-                    value={form.country}
-                    onChange={(v) => setForm({ ...form, country: v })}
-                  />
-                </Field>
-                <Field label="WA No.">
-                  <input
-                    className={textInputClass}
-                    onChange={(e) =>
-                      setForm({ ...form, whatsapp: e.target.value })
-                    }
-                    placeholder="WhatsApp"
-                  />
-                </Field>
-                <Field label="Requirement">
-                  <textarea
-                    className={textAreaClass}
-                    onChange={(e) =>
-                      setForm({ ...form, requirement: e.target.value })
-                    }
-                    placeholder="Describe your requirement"
-                  />
-                </Field>
-              </div>
+        {!isLoggedIn && (
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-lg p-8 text-center flex flex-col items-center gap-4 mt-6">
+            <span className="text-3xl">🔐</span>
+            <h3 className="text-xl font-semibold text-gray-900">
+              Log in to view quote requests
+            </h3>
+            <p className="text-sm text-gray-600 max-w-md">
+              Sign in to browse submitted quote requests and respond with your
+              offerings.
+            </p>
+            <Link
+              href={loginHref}
+              className="px-6 py-2 rounded-full bg-[#F4D300] text-[#181818] font-semibold shadow hover:bg-yellow-400 transition"
+            >
+              Log in to continue
+            </Link>
+          </div>
+        )}
 
-              <div className="mt-6 flex justify-end">
-                <button
-                  disabled={loading}
-                  onClick={submit}
-                  className="bg-[#F4D300] text-[#181818] font-semibold px-6 py-2 rounded-full shadow hover:bg-yellow-400"
-                >
-                  {loading ? "Submitting..." : "Submit"}
-                </button>
+        {isLoggedIn && (
+          <div className="bg-white rounded-2xl shadow p-6 mt-6">
+            <h3 className="text-sm font-semibold text-gray-900 mb-4">
+              Details
+            </h3>
+            {submitted ? (
+              <div className="text-green-700">
+                Thanks! We received your submission.
               </div>
-            </>
-          )}
-        </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Field label="Name / Company">
+                    <input
+                      className={textInputClass}
+                      onChange={(e) =>
+                        setForm({ ...form, name: e.target.value })
+                      }
+                      placeholder="Your name or company"
+                    />
+                  </Field>
+                  <Field label="Email">
+                    <input
+                      className={textInputClass}
+                      onChange={(e) =>
+                        setForm({ ...form, email: e.target.value })
+                      }
+                      placeholder="you@example.com"
+                    />
+                  </Field>
+                  <Field label="Phone">
+                    <input
+                      className={textInputClass}
+                      onChange={(e) =>
+                        setForm({ ...form, phone: e.target.value })
+                      }
+                      placeholder="+1 555 000 0000"
+                    />
+                  </Field>
+                  <Field label="City">
+                    <input
+                      className={textInputClass}
+                      onChange={(e) =>
+                        setForm({ ...form, city: e.target.value })
+                      }
+                      placeholder="City"
+                    />
+                  </Field>
+                  <Field label="State">
+                    <input
+                      className={textInputClass}
+                      onChange={(e) =>
+                        setForm({ ...form, state: e.target.value })
+                      }
+                      placeholder="State"
+                    />
+                  </Field>
+                  <Field label="Country">
+                    <CountrySelect
+                      value={form.country}
+                      onChange={(v) => setForm({ ...form, country: v })}
+                    />
+                  </Field>
+                  <Field label="WA No.">
+                    <input
+                      className={textInputClass}
+                      onChange={(e) =>
+                        setForm({ ...form, whatsapp: e.target.value })
+                      }
+                      placeholder="WhatsApp"
+                    />
+                  </Field>
+                  <Field label="Requirement">
+                    <textarea
+                      className={textAreaClass}
+                      onChange={(e) =>
+                        setForm({ ...form, requirement: e.target.value })
+                      }
+                      placeholder="Describe your requirement"
+                    />
+                  </Field>
+                </div>
+
+                <div className="mt-6 flex justify-end">
+                  <button
+                    disabled={loading}
+                    onClick={submit}
+                    className="bg-[#F4D300] text-[#181818] font-semibold px-6 py-2 rounded-full shadow hover:bg-yellow-400"
+                  >
+                    {loading ? "Submitting..." : "Submit"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

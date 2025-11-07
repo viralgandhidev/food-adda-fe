@@ -8,6 +8,8 @@ import {
   selectClass,
   fileInputClass,
 } from "@/components/forms/fieldClasses";
+import { useAuthStore } from "@/store/auth";
+import Link from "next/link";
 
 function Field({
   label,
@@ -66,9 +68,29 @@ export default function RecruitmentsFormPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loadingListings, setLoadingListings] = useState(true);
+  const token = useAuthStore((state) => state.token);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const loginHref = `/login?next=${encodeURIComponent("/forms/Recruitments")}`;
+
+  useEffect(() => {
+    if (token) {
+      setIsLoggedIn(true);
+      return;
+    }
+    try {
+      if (typeof window !== "undefined") {
+        setIsLoggedIn(Boolean(localStorage.getItem("token")));
+      } else {
+        setIsLoggedIn(false);
+      }
+    } catch {
+      setIsLoggedIn(false);
+    }
+  }, [token]);
 
   // Prefill email/phone
   useEffect(() => {
+    if (!isLoggedIn) return;
     (async () => {
       try {
         const res = await api.get("/auth/me");
@@ -80,7 +102,7 @@ export default function RecruitmentsFormPage() {
         }));
       } catch {}
     })();
-  }, []);
+  }, [isLoggedIn]);
 
   const submit = async () => {
     try {
@@ -109,6 +131,12 @@ export default function RecruitmentsFormPage() {
   const fetchSubmissions = useCallback(async () => {
     try {
       setLoadingListings(true);
+      if (!isLoggedIn) {
+        setSubmissions([]);
+        setTotalPages(1);
+        setLoadingListings(false);
+        return;
+      }
       const pageSize = 12;
       // Fetch RECRUITMENT and filter by recruitment_kind in payload
       const res = await api.get("/forms/list", {
@@ -130,7 +158,7 @@ export default function RecruitmentsFormPage() {
     } finally {
       setLoadingListings(false);
     }
-  }, [activeTab, page]);
+  }, [activeTab, page, isLoggedIn]);
 
   useEffect(() => {
     fetchSubmissions();
@@ -447,6 +475,23 @@ export default function RecruitmentsFormPage() {
                 {loading ? "Submitting..." : "Submit"}
               </button>
             </div>
+          </div>
+        ) : !isLoggedIn ? (
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-lg p-10 text-center flex flex-col items-center gap-4 mt-6">
+            <span className="text-4xl">🔐</span>
+            <h3 className="text-2xl font-semibold text-gray-900">
+              Log in to view recruitment listings
+            </h3>
+            <p className="text-sm text-gray-600 max-w-md">
+              Sign in to browse employers and candidates, view contact details,
+              and connect directly.
+            </p>
+            <Link
+              href={loginHref}
+              className="px-6 py-2 rounded-full bg-[#F4D300] text-[#181818] font-semibold shadow hover:bg-yellow-400 transition"
+            >
+              Log in to continue
+            </Link>
           </div>
         ) : (
           <>

@@ -25,7 +25,7 @@ interface ProductCardProps {
 
 const DEFAULT_PRODUCT_IMAGE = "/images/default-product.jpg";
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api/v1";
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api/v1";
 const BACKEND_BASE_URL = API_BASE_URL.replace(/\/api\/v1$/, "");
 
 function getFullImageUrl(imageUrl?: string) {
@@ -50,22 +50,34 @@ export default function ProductCard({
   // Use the first image from images array if available, else fallback
   const [imgError, setImgError] = useState(false);
   const [saved, setSaved] = useState(false);
-  // Hydrate saved state on mount
-  // Note: ProductCard is client component; best-effort check
-  useState(() => {
-    authService
-      .isProductSaved(id)
-      .then((isSaved) => setSaved(isSaved))
-      .catch(() => {});
-    return undefined as unknown as void;
-  });
   useEffect(() => {
+    let mounted = true;
     try {
-      setIsLoggedIn(Boolean(localStorage.getItem("token")));
+      const token = localStorage.getItem("token");
+      const logged = Boolean(token);
+      if (mounted) {
+        setIsLoggedIn(logged);
+      }
+      if (logged) {
+        authService
+          .isProductSaved(id)
+          .then((isSaved) => {
+            if (mounted) setSaved(isSaved);
+          })
+          .catch(() => {});
+      } else if (mounted) {
+        setSaved(false);
+      }
     } catch {
-      setIsLoggedIn(false);
+      if (mounted) {
+        setIsLoggedIn(false);
+        setSaved(false);
+      }
     }
-  }, []);
+    return () => {
+      mounted = false;
+    };
+  }, [id]);
   const displayImage =
     !imgError && images.length > 0
       ? images[0].image_url
@@ -97,6 +109,12 @@ export default function ProductCard({
             }`}
             onClick={async (e) => {
               e.stopPropagation();
+              if (!isLoggedIn) {
+                router.push(
+                  `/login?next=${encodeURIComponent(`/product/${id}`)}`
+                );
+                return;
+              }
               try {
                 if (saved) {
                   await authService.unsaveProduct(id);

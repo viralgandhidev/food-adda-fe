@@ -20,6 +20,11 @@ const nextConfig = {
         port: "3000",
         pathname: "/uploads/**",
       },
+      {
+        protocol: "https",
+        hostname: "api.foodadda.in",
+        pathname: "/uploads/**",
+      },
     ],
   },
   // Enable static file serving

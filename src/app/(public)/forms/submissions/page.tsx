@@ -59,7 +59,7 @@ function SubmissionsContent() {
       s.contact_name || payload?.company_name || payload?.name || "Untitled";
 
     const API_BASE_URL =
-      process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api/v1";
+      process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api/v1";
     const BACKEND_BASE_URL = API_BASE_URL.replace(/\/api\/v1$/, "");
     const getFullFileUrl = (p?: string) => {
       if (!p) return undefined;

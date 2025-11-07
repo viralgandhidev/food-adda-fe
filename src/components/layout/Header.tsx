@@ -2,12 +2,15 @@
 import Image from "next/image";
 import Link from "next/link";
 import { FiLogOut, FiChevronRight } from "react-icons/fi";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
+import { useAuthStore } from "@/store/auth";
 
 export default function Header() {
   const router = useRouter();
+  const pathname = usePathname();
+  const clearAuth = useAuthStore((s) => s.clearAuth);
   const [hydrated, setHydrated] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showMega, setShowMega] = useState<"B2B" | "B2C" | null>(null);
@@ -29,6 +32,10 @@ export default function Header() {
     if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
     hideTimeoutRef.current = setTimeout(() => setShowMega(null), 180);
   };
+
+  useEffect(() => {
+    setShowMega(null);
+  }, [pathname]);
 
   useEffect(() => {
     // Hydration guard
@@ -103,11 +110,18 @@ export default function Header() {
 
   const onLogout = () => {
     try {
+      clearAuth();
+      // Best effort: also remove in case other code paths set these directly
       localStorage.removeItem("token");
       localStorage.removeItem("auth-storage");
     } catch {}
     setIsLoggedIn(false);
-    router.replace("/login");
+    // Hard reload to clear in-memory state across the app
+    if (typeof window !== "undefined") {
+      window.location.href = "/login";
+    } else {
+      router.replace("/login");
+    }
   };
 
   if (!hydrated) {
@@ -155,36 +169,24 @@ export default function Header() {
               onMouseEnter={() => openMega("B2B")}
               onMouseLeave={scheduleCloseMega}
             >
-              {isLoggedIn ? (
-                <Link
-                  href="/forms/B2B"
-                  className="text-[#1C1A1A] hover:text-[#F4D300] transition"
-                >
-                  B2B
-                </Link>
-              ) : (
-                <span className="text-[#1C1A1A] hover:text-[#F4D300] transition cursor-pointer">
-                  B2B
-                </span>
-              )}
+              <Link
+                href="/forms/B2B"
+                className="text-[#1C1A1A] hover:text-[#F4D300] transition"
+              >
+                B2B
+              </Link>
             </div>
             <div
               className="relative"
               onMouseEnter={() => openMega("B2C")}
               onMouseLeave={scheduleCloseMega}
             >
-              {isLoggedIn ? (
-                <Link
-                  href="/forms/B2C"
-                  className="text-[#1C1A1A] hover:text-[#F4D300] transition"
-                >
-                  B2C
-                </Link>
-              ) : (
-                <span className="text-[#1C1A1A] hover:text-[#F4D300] transition cursor-pointer">
-                  B2C
-                </span>
-              )}
+              <Link
+                href="/forms/B2C"
+                className="text-[#1C1A1A] hover:text-[#F4D300] transition"
+              >
+                B2C
+              </Link>
             </div>
             <Link
               href="/forms/HoReCa"

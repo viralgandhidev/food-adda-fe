@@ -9,6 +9,8 @@ import {
   fileInputClass,
   textAreaClass,
 } from "@/components/forms/fieldClasses";
+import { useAuthStore } from "@/store/auth";
+import Link from "next/link";
 
 function Field({
   label,
@@ -67,9 +69,29 @@ export default function FranchiseFormPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loadingListings, setLoadingListings] = useState(true);
+  const token = useAuthStore((state) => state.token);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const loginHref = `/login?next=${encodeURIComponent("/forms/Franchise")}`;
+
+  useEffect(() => {
+    if (token) {
+      setIsLoggedIn(true);
+      return;
+    }
+    try {
+      if (typeof window !== "undefined") {
+        setIsLoggedIn(Boolean(localStorage.getItem("token")));
+      } else {
+        setIsLoggedIn(false);
+      }
+    } catch {
+      setIsLoggedIn(false);
+    }
+  }, [token]);
 
   // Prefill email/phone from profile
   useEffect(() => {
+    if (!isLoggedIn) return;
     (async () => {
       try {
         const res = await api.get("/auth/me");
@@ -81,7 +103,7 @@ export default function FranchiseFormPage() {
         }));
       } catch {}
     })();
-  }, []);
+  }, [isLoggedIn]);
 
   const submit = async () => {
     try {
@@ -111,6 +133,12 @@ export default function FranchiseFormPage() {
   const fetchSubmissions = useCallback(async () => {
     try {
       setLoadingListings(true);
+      if (!isLoggedIn) {
+        setSubmissions([]);
+        setTotalPages(1);
+        setLoadingListings(false);
+        return;
+      }
       const pageSize = 12;
       // Fetch a larger window and filter client-side by franchise_kind
       const res = await api.get("/forms/list", {
@@ -135,7 +163,7 @@ export default function FranchiseFormPage() {
     } finally {
       setLoadingListings(false);
     }
-  }, [activeTab, page]);
+  }, [activeTab, page, isLoggedIn]);
 
   useEffect(() => {
     fetchSubmissions();
@@ -308,7 +336,7 @@ export default function FranchiseFormPage() {
     const images = files.filter((f) => (f.mime_type || "").startsWith("image"));
 
     const API_BASE_URL =
-      process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api/v1";
+      process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api/v1";
     const BACKEND_BASE_URL = API_BASE_URL.replace(/\/api\/v1$/, "");
     const getFullFileUrl = (p?: string) => {
       if (!p) return undefined;
@@ -324,7 +352,6 @@ export default function FranchiseFormPage() {
     return (
       <div className="rounded-2xl border border-gray-200 bg-white shadow-sm hover:shadow-md transition overflow-hidden">
         <div className="relative h-36 w-full bg-gray-50">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={cover}
             alt={images[0]?.original_name || title}
@@ -461,6 +488,23 @@ export default function FranchiseFormPage() {
                 {loading ? "Submitting..." : "Submit"}
               </button>
             </div>
+          </div>
+        ) : !isLoggedIn ? (
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-lg p-10 text-center flex flex-col items-center gap-4 mt-6">
+            <span className="text-4xl">🔐</span>
+            <h3 className="text-2xl font-semibold text-gray-900">
+              Log in to view Franchise listings
+            </h3>
+            <p className="text-sm text-gray-600 max-w-md">
+              Sign in to explore franchise opportunities and connect with brands
+              or seekers.
+            </p>
+            <Link
+              href={loginHref}
+              className="px-6 py-2 rounded-full bg-[#F4D300] text-[#181818] font-semibold shadow hover:bg-yellow-400 transition"
+            >
+              Log in to continue
+            </Link>
           </div>
         ) : (
           <>
