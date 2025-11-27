@@ -18,6 +18,8 @@ body {
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-lato: var(--font-lato);
+  --font-family-lato: var(--font-lato), system-ui, -apple-system, sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -30,5 +32,36 @@ body {
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-lato), system-ui, -apple-system, sans-serif;
+}
+
+/* Remove any background patterns that might cause visual artifacts */
+.dark-section,
+section[style*="background-color: #1C1A1A"],
+section[style*="background-color:#1C1A1A"] {
+  background-image: none !important;
+  background-repeat: no-repeat !important;
+  background-position: initial !important;
+  background-size: initial !important;
+  -webkit-text-size-adjust: 100% !important;
+  text-size-adjust: 100% !important;
+  transform: translateZ(0) !important;
+  -webkit-transform: translateZ(0) !important;
+  will-change: transform !important;
+  backface-visibility: hidden !important;
+  -webkit-backface-visibility: hidden !important;
+  perspective: 1000px !important;
+  -webkit-perspective: 1000px !important;
+}
+
+.dark-section::before,
+.dark-section::after,
+section[style*="background-color: #1C1A1A"]::before,
+section[style*="background-color: #1C1A1A"]::after,
+section[style*="background-color:#1C1A1A"]::before,
+section[style*="background-color:#1C1A1A"]::after {
+  display: none !important;
+  content: none !important;
+  background: none !important;
+  border: none !important;
 }

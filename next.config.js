@@ -25,6 +25,11 @@ const nextConfig = {
         hostname: "api.foodadda.in",
         pathname: "/uploads/**",
       },
+      {
+        protocol: "https",
+        hostname: "flagcdn.com",
+        pathname: "/**",
+      },
     ],
   },
   // Enable static file serving

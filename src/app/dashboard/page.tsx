@@ -258,7 +258,7 @@ export default function DashboardPage() {
     <ProtectedRoute>
       <MainLayout>
         {/* KPI cards */}
-        <section className="px-6 md:px-12 py-10">
+        <section className="px-6 md:px-[135px] py-10">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Profile Views */}
             <div className="relative overflow-hidden rounded-2xl border border-yellow-100 bg-white shadow-sm p-6 flex items-center gap-5">
@@ -315,7 +315,7 @@ export default function DashboardPage() {
         </section>
 
         {/* Quick panels */}
-        <section className="px-6 md:px-12">
+        <section className="px-6 md:px-[135px]">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Your Products (list view) */}
             <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm min-h-[180px] h-full flex flex-col">
@@ -488,7 +488,7 @@ export default function DashboardPage() {
         </section>
 
         {/* Global Search */}
-        <section className="px-6 md:px-12 mt-10">
+        <section className="px-6 md:px-[135px] mt-10">
           <div className="w-full">
             <form
               onSubmit={onSearchSubmit}
@@ -615,7 +615,7 @@ export default function DashboardPage() {
         </section>
 
         {/* Featured Categories - compact cards, no redundant CTA */}
-        <section className="px-6 md:px-12 mt-10">
+        <section className="px-6 md:px-[135px] mt-10">
           <h3 className="text-lg font-semibold text-[#181818] mb-4">
             Featured Categories
           </h3>
@@ -625,7 +625,7 @@ export default function DashboardPage() {
         {/* Suggested Businesses removed as requested */}
 
         {/* Browse Products */}
-        <section className="px-6 md:px-12 mt-10 mb-16">
+        <section className="px-6 md:px-[135px] mt-10 mb-16">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-[#181818]">
               Browse Products

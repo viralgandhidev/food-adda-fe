@@ -62,12 +62,69 @@ export default function LandingPage() {
   const [featureOpen, setFeatureOpen] = useState<null | "horeca" | "franchise">(
     null
   );
+  const [headerBgColor, setHeaderBgColor] = useState("#1C1A1A");
+  const authenticProductsRef = useRef<HTMLElement | null>(null);
+  const aboutUsRef = useRef<HTMLElement | null>(null);
+
   useEffect(() => {
     try {
       setIsLoggedIn(Boolean(localStorage.getItem("token")));
     } catch {
       setIsLoggedIn(false);
     }
+  }, []);
+
+  // Handle scroll to change header background color
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!authenticProductsRef.current) {
+        return;
+      }
+
+      const headerHeight = 80; // Approximate header height
+
+      // Get the Authentic Products section's position in the viewport
+      const authenticProductsRect =
+        authenticProductsRef.current.getBoundingClientRect();
+
+      // Get header position (sticky header is at top of viewport, so bottom is at headerHeight)
+      const headerBottom = headerHeight;
+
+      // If Authentic Products section top is at or above the header bottom, we've scrolled past it
+      // Change to light background when header's bottom scrolls past Authentic Products section top
+      // Change back to dark when scrolling back up above Authentic Products section
+      if (authenticProductsRect.top <= headerBottom) {
+        setHeaderBgColor("#FDFDFF");
+      } else {
+        setHeaderBgColor("#1C1A1A");
+      }
+    };
+
+    // Initial check after a delay to ensure DOM is ready
+    const initTimer = setTimeout(() => {
+      handleScroll();
+    }, 500);
+
+    const scrollHandler = () => {
+      requestAnimationFrame(handleScroll);
+    };
+
+    const mainElement = document.getElementById("sticky-main-content");
+    if (mainElement) {
+      mainElement.addEventListener("scroll", scrollHandler, { passive: true });
+    }
+    // Also listen to window scroll as fallback
+    window.addEventListener("scroll", scrollHandler, { passive: true });
+    window.addEventListener("resize", scrollHandler, { passive: true });
+
+    return () => {
+      clearTimeout(initTimer);
+      if (mainElement) {
+        mainElement.removeEventListener("scroll", scrollHandler);
+      }
+      window.removeEventListener("scroll", scrollHandler);
+      window.removeEventListener("resize", scrollHandler);
+    };
   }, []);
 
   // About slides
@@ -188,22 +245,62 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <MainLayout>
+    <MainLayout headerBgColor={headerBgColor} isSticky={true}>
       {/* Public Landing Hero */}
-      <section>
+      <section
+        className="dark-section overflow-hidden border-none outline-none"
+        style={{
+          border: "none",
+          outline: "none",
+          backgroundImage: "none",
+          backgroundRepeat: "no-repeat",
+          WebkitTextSizeAdjust: "100%",
+          textSizeAdjust: "100%",
+          transform: "translateZ(0)",
+          willChange: "transform",
+          backfaceVisibility: "hidden",
+          WebkitBackfaceVisibility: "hidden",
+        }}
+      >
         <HeroSection />
       </section>
 
       {/* Key Value Props */}
-      <section className="bg-[#1C1A1A] text-white py-24">
-        <div className="mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-20 px-6 md:px-12">
+      <section
+        ref={authenticProductsRef}
+        className="dark-section font-lato !bg-[#292929] text-white py-20 overflow-hidden border-none outline-none px-6 md:px-[135px] flex flex-col"
+        style={{
+          height: "550px",
+          boxSizing: "border-box",
+          border: "none",
+          outline: "none",
+          backgroundImage: "none",
+          backgroundRepeat: "no-repeat",
+          backgroundColor: "#1C1A1A",
+          WebkitTextSizeAdjust: "100%",
+          textSizeAdjust: "100%",
+          transform: "translateZ(0)",
+          willChange: "transform",
+          backfaceVisibility: "hidden",
+          WebkitBackfaceVisibility: "hidden",
+        }}
+      >
+        <h4 className="text-white text-2xl md:text-3xl font-extrabold font-lato">
+          Features
+        </h4>
+        <div className="mx-auto h-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-20 content-center mt-6">
           {/* Authentic Products */}
           <div className="flex flex-col items-start gap-4 max-w-xs">
-            <div className="w-14 h-14 rounded-full bg-[#F6DD3D] text-[#1C1A1A] flex items-center justify-center">
-              <FiAward size={22} />
+            <div className="w-[70px] h-[70px] rounded-full bg-[#F4D300] text-[#1C1A1A] flex items-center justify-center">
+              <Image
+                src="/images/features/carbon_badge.svg"
+                alt="Authentic Products"
+                width={40}
+                height={40}
+              />
             </div>
-            <div>
-              <h4 className="text-white text-xl md:text-xl font-extrabold tracking-tight">
+            <div className="mt-6">
+              <h4 className="text-white text-xl md:text-xl font-extrabold tracking-tight font-lato">
                 Authentic Products
               </h4>
               <p className="text-sm text-[#B1B0B0] leading-6 mt-2">
@@ -215,10 +312,15 @@ export default function LandingPage() {
 
           {/* Verified Businesses */}
           <div className="flex flex-col items-start gap-4 max-w-xs">
-            <div className="w-14 h-14 rounded-full bg-[#F6DD3D] text-[#1C1A1A] flex items-center justify-center">
-              <FiShield size={22} />
+            <div className="w-[70px] h-[70px] rounded-full bg-[#F4D300] text-[#1C1A1A] flex items-center justify-center">
+              <Image
+                src="/images/features/material-symbols_verified-outline-rounded.svg"
+                alt="Verified Businesses"
+                width={40}
+                height={40}
+              />
             </div>
-            <div>
+            <div className="mt-6">
               <h4 className="text-white text-xl md:text-xl font-extrabold tracking-tight">
                 Verified Businesses
               </h4>
@@ -231,10 +333,15 @@ export default function LandingPage() {
 
           {/* Seamless Sourcing Experience */}
           <div className="flex flex-col items-start gap-4 max-w-xs">
-            <div className="w-14 h-14 rounded-full bg-[#F6DD3D] text-[#1C1A1A] flex items-center justify-center">
-              <FiLayers size={22} />
+            <div className="w-[70px] h-[70px] rounded-full bg-[#F4D300] text-[#1C1A1A] flex items-center justify-center">
+              <Image
+                src="/images/features/qlementine-icons_ui-panel-top-16.svg"
+                alt="Verified Businesses"
+                width={40}
+                height={40}
+              />
             </div>
-            <div>
+            <div className="mt-6">
               <h4 className="text-white text-xl md:text-xl font-extrabold tracking-tight">
                 Seamless Sourcing Experience
               </h4>
@@ -247,10 +354,15 @@ export default function LandingPage() {
 
           {/* Dedicated Support */}
           <div className="flex flex-col items-start gap-4 max-w-xs">
-            <div className="w-14 h-14 rounded-full bg-[#F6DD3D] text-[#1C1A1A] flex items-center justify-center">
-              <FiHeadphones size={22} />
+            <div className="w-[70px] h-[70px] rounded-full bg-[#F4D300] text-[#1C1A1A] flex items-center justify-center">
+              <Image
+                src="/images/features/bx_support.svg"
+                alt="Dedicated Support"
+                width={40}
+                height={40}
+              />
             </div>
-            <div>
+            <div className="mt-6">
               <h4 className="text-white text-xl md:text-xl font-extrabold tracking-tight">
                 Dedicated Support
               </h4>
@@ -264,7 +376,10 @@ export default function LandingPage() {
       </section>
 
       {/* About Us (auto slider) */}
-      <section className="bg-[#FFFCE9] md:px-12 py-12">
+      <section
+        ref={aboutUsRef}
+        className="bg-[#FFFCE9] px-6 md:px-[135px] py-12"
+      >
         <div className="grid grid-cols-1 md:grid-cols-2 items-center justify-between rounded-2xl py-8">
           {/* Text */}
           <div className="mr-auto">
@@ -308,7 +423,7 @@ export default function LandingPage() {
       </section>
 
       {/* Featured Categories (same style as dashboard) */}
-      <section className="px-6 md:px-12 mt-10">
+      <section className="px-6 md:px-[135px] mt-10">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-[#181818]">
             Featured Categories
@@ -375,7 +490,7 @@ export default function LandingPage() {
       </section>
 
       {/* Top Viewed Products */}
-      <section className="px-6 md:px-12 py-12 mt-7 bg-[#FFFCE9]">
+      <section className="px-6 md:px-[135px] py-12 mt-7 bg-[#FFFCE9]">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-[#181818]">
             Discover new products across categories
@@ -472,7 +587,7 @@ export default function LandingPage() {
       </section>
 
       {/* HoReCa + Distribution section (moved below discover products) */}
-      <section id="b2b-b2c" ref={b2bRef} className="relative px-6 md:px-12">
+      <section id="b2b-b2c" ref={b2bRef} className="relative">
         {/* yellow band behind first card */}
         <div className="absolute inset-x-0 top-0 h-40 md:h-72 bg-[#F4D300]" />
 
@@ -526,7 +641,7 @@ export default function LandingPage() {
         </div>
 
         {/* Franchise banner */}
-        <div className="-mx-6 md:-mx-12">
+        <div>
           <div
             className="mt-12 relative z-10 overflow-hidden bg-center bg-cover h-[320px] md:h-[420px] rounded-none"
             style={{ backgroundImage: "url('/images/franchise-home.png')" }}
@@ -568,8 +683,8 @@ export default function LandingPage() {
       </section>
 
       {/* Read our Blogs (slider like Discover products) */}
-      <section className="px-6 md:px-12 mt-10">
-        <div className="mx-auto">
+      <section className="px-6 md:px-[135px] mt-10">
+        <div>
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-[#181818]">
               Read our Blogs
@@ -643,7 +758,7 @@ export default function LandingPage() {
       </section>
 
       {/* CTA */}
-      <section className="px-6 md:px-12 my-16">
+      <section className="px-6 md:px-[135px] my-16">
         <div className="bg-white border border-gray-100 rounded-2xl p-8 shadow-sm flex flex-col md:flex-row items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold text-[#181818] mb-2">

@@ -57,7 +57,7 @@ export default function PublicPricingPage() {
               <div className="flex items-baseline justify-between">
                 <h2 className="text-xl font-bold text-[#181818]">Silver</h2>
                 <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 border">
-                  Monthly
+                  Yearly
                 </span>
               </div>
               <div className="mt-2 text-3xl font-extrabold text-[#181818]">
@@ -91,7 +91,7 @@ export default function PublicPricingPage() {
               <div className="flex items-baseline justify-between">
                 <h2 className="text-xl font-bold text-[#181818]">Gold</h2>
                 <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-50 border border-yellow-200 text-yellow-900">
-                  Monthly
+                  Yearly
                 </span>
               </div>
               <div className="mt-2 text-3xl font-extrabold text-[#181818]">

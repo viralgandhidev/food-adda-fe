@@ -7,13 +7,28 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/store/auth";
 
-export default function Header() {
+interface HeaderProps {
+  bgColor?: string;
+  isSticky?: boolean;
+}
+
+export default function Header({
+  bgColor = "#FDFDFF",
+  isSticky = false,
+}: HeaderProps) {
   const router = useRouter();
   const pathname = usePathname();
   const clearAuth = useAuthStore((s) => s.clearAuth);
   const [hydrated, setHydrated] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showMega, setShowMega] = useState<"B2B" | "B2C" | null>(null);
+
+  // Determine text color based on background
+  const isDarkBg = bgColor === "#1C1A1A";
+  const textColorClass = isDarkBg ? "text-white" : "text-[#1C1A1A]";
+  const hoverColorClass = isDarkBg
+    ? "hover:text-[#F4D300]"
+    : "hover:text-[#F4D300]";
   const [categoryTree, setCategoryTree] = useState<
     Array<{
       id: string;
@@ -126,7 +141,12 @@ export default function Header() {
 
   if (!hydrated) {
     return (
-      <header className="bg-[#FDFDFF] w-full py-3 shadow-sm">
+      <header
+        className={`w-full py-3 shadow-sm ${
+          isSticky ? "sticky top-0 z-50" : ""
+        }`}
+        style={{ backgroundColor: bgColor }}
+      >
         <div className="max-w-8xl mx-auto flex items-center justify-between px-4">
           {/* Logo */}
           <div className="flex items-center gap-10">
@@ -149,8 +169,13 @@ export default function Header() {
   }
 
   return (
-    <header className="bg-[#FDFDFF] w-full py-3 shadow-sm">
-      <div className="max-w-8xl mx-auto flex items-center justify-between px-4">
+    <header
+      className={`w-full py-3 px-6 md:px-[135px] shadow-sm ${
+        isSticky ? "sticky top-0 z-50" : ""
+      }`}
+      style={{ backgroundColor: bgColor }}
+    >
+      <div className="max-w-8xl mx-auto flex items-center justify-between">
         {/* Logo */}
         <div className="flex items-center gap-10">
           <Link href="/" className="flex items-center gap-2">
@@ -171,7 +196,7 @@ export default function Header() {
             >
               <Link
                 href="/forms/B2B"
-                className="text-[#1C1A1A] hover:text-[#F4D300] transition"
+                className={`${textColorClass} ${hoverColorClass} transition`}
               >
                 B2B
               </Link>
@@ -183,32 +208,32 @@ export default function Header() {
             >
               <Link
                 href="/forms/B2C"
-                className="text-[#1C1A1A] hover:text-[#F4D300] transition"
+                className={`${textColorClass} ${hoverColorClass} transition`}
               >
                 B2C
               </Link>
             </div>
             <Link
               href="/forms/HoReCa"
-              className="text-[#1C1A1A] hover:text-[#F4D300] transition"
+              className={`${textColorClass} ${hoverColorClass} transition`}
             >
               HoReCa
             </Link>
             <Link
               href="/forms/Franchise"
-              className="text-[#1C1A1A] hover:text-[#F4D300] transition"
+              className={`${textColorClass} ${hoverColorClass} transition`}
             >
               Franchise
             </Link>
             <Link
               href="/forms/Recruitments"
-              className="text-[#1C1A1A] hover:text-[#F4D300] transition"
+              className={`${textColorClass} ${hoverColorClass} transition`}
             >
               Recruitments
             </Link>
             <Link
               href="/forms/Quote-Request"
-              className="text-[#1C1A1A] hover:text-[#F4D300] transition"
+              className={`${textColorClass} ${hoverColorClass} transition`}
             >
               Quote Request
             </Link>

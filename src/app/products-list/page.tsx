@@ -349,7 +349,7 @@ function ProductsListContent() {
 
   return (
     <MainLayout>
-      <section className="p-16 mb-12">
+      <section className="px-6 md:px-[135px] py-10 mb-12">
         <div className="mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-10">
           <h1 className="text-3xl font-bold text-[#181818]">Browse</h1>
           <Link

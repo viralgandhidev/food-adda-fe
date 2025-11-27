@@ -118,7 +118,7 @@ export default function ProductDetailsPage() {
 
   return (
     <MainLayout>
-      <section className="max-w-7xl mx-auto px-4 md:px-8 py-12 min-h-[80vh]">
+      <section className="max-w-7xl mx-auto px-6 md:px-[105px] py-12 min-h-[80vh]">
         <div className="flex flex-col lg:flex-row gap-10">
           {/* Image Gallery */}
           <div className="flex flex-row lg:flex-col gap-3 items-center">
