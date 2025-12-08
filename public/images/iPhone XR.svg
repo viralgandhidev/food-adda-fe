@@ -42,3 +42,9 @@
   <circle cx="480" cy="156" r="5.9" fill="white" opacity="0.5"/>
   <rect x="301" y="157" width="9" height="9" rx="4.5" fill="#333333" opacity="0.5"/>
 </svg>
+
+  <rect x="357" y="157" width="107" height="9" rx="4.5" fill="#333333" opacity="0.4"/>
+  <circle cx="475" cy="151" r="10.5" fill="#313131" opacity="0.5"/>
+  <circle cx="480" cy="156" r="5.9" fill="white" opacity="0.5"/>
+  <rect x="301" y="157" width="9" height="9" rx="4.5" fill="#333333" opacity="0.5"/>
+</svg>

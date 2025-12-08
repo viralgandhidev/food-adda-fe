@@ -72,7 +72,7 @@ const plans: {
   {
     code: "SILVER",
     label: "Silver",
-    priceDisplay: "₹5,900 /Month (incl. GST)",
+    priceDisplay: "₹5,900 /Year (incl. GST)",
     amountPaise: 5900 * 100,
     features: [
       { label: "Limited Photo Upload (Up to 3)", included: true },
@@ -88,7 +88,7 @@ const plans: {
   {
     code: "GOLD",
     label: "Gold",
-    priceDisplay: "₹10,620 /Month (incl. GST)",
+    priceDisplay: "₹10,620 /Year (incl. GST)",
     amountPaise: 10620 * 100,
     features: [
       { label: "Unlimited Photos", included: true },

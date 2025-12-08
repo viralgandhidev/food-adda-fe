@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import Image from "next/image";
 
@@ -75,9 +76,9 @@ const countries: Country[] = [
 ];
 
 export default function HeroSection() {
+  const router = useRouter();
   const [phone, setPhone] = useState("");
-  const [selectedCountry, setSelectedCountry] = useState<Country>(countries[0]);
-  const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
+  const selectedCountry = countries[0]; // India (default)
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<
     "idle" | "success" | "error"
@@ -85,7 +86,6 @@ export default function HeroSection() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const sectionRef = useRef<HTMLElement | null>(null);
   const slideIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const countryDropdownRef = useRef<HTMLDivElement | null>(null);
 
   // Force repaint on mount to fix rendering artifacts
   useEffect(() => {
@@ -103,29 +103,6 @@ export default function HeroSection() {
       return () => clearTimeout(timer);
     }
   }, []);
-
-  // Close country dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        countryDropdownRef.current &&
-        !countryDropdownRef.current.contains(event.target as Node)
-      ) {
-        setIsCountryDropdownOpen(false);
-      }
-    };
-
-    if (isCountryDropdownOpen) {
-      // Use a small delay to avoid closing immediately when opening
-      setTimeout(() => {
-        document.addEventListener("mousedown", handleClickOutside);
-      }, 0);
-    }
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isCountryDropdownOpen]);
 
   // Slideshow auto-advance
   useEffect(() => {
@@ -155,19 +132,20 @@ export default function HeroSection() {
       await api.post("/forms/contact", { phone: fullPhoneNumber });
       setSubmitStatus("success");
       setPhone("");
-      // Reset success message after 3 seconds
-      setTimeout(() => setSubmitStatus("idle"), 3000);
+      // Redirect based on login status
+      setTimeout(() => {
+        const isLoggedIn = Boolean(localStorage.getItem("token"));
+        if (isLoggedIn) {
+          router.push("/subscribe");
+        } else {
+          router.push("/pricing");
+        }
+      }, 1000);
     } catch {
       setSubmitStatus("error");
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const handleCountrySelect = (country: Country) => {
-    setSelectedCountry(country);
-    setIsCountryDropdownOpen(false);
-    setPhone(""); // Reset phone when country changes
   };
 
   return (
@@ -210,83 +188,22 @@ export default function HeroSection() {
               className="flex bg-white rounded-lg shadow-lg"
               style={{ overflow: "visible" }}
             >
-              <div className="relative z-10" ref={countryDropdownRef}>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setIsCountryDropdownOpen(!isCountryDropdownOpen);
-                  }}
-                  className="flex items-center px-3 py-3.5 border-r border-gray-200 hover:bg-gray-50 transition cursor-pointer"
-                >
-                  <Image
-                    src={getFlagUrl(selectedCountry.code)}
-                    alt={selectedCountry.name}
-                    width={20}
-                    height={15}
-                    className="object-cover rounded-sm"
-                    style={{ width: "20px", height: "15px" }}
-                    unoptimized
-                  />
-                  <span className="ml-1.5 text-gray-700 font-medium text-sm">
-                    {selectedCountry.dialCode}
-                  </span>
-                  <svg
-                    className={`ml-1.5 w-3.5 h-3.5 text-gray-500 transition-transform ${
-                      isCountryDropdownOpen ? "rotate-180" : ""
-                    }`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </button>
-                {/* Dropdown positioned absolutely relative to button */}
-                {isCountryDropdownOpen && (
-                  <div className="absolute top-full left-0 mt-1 bg-white rounded-lg shadow-xl border border-gray-200 z-[100] max-h-80 overflow-y-auto w-64">
-                    {countries.map((country) => (
-                      <button
-                        key={country.code}
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleCountrySelect(country);
-                        }}
-                        className={`w-full flex items-center px-4 py-3 hover:bg-gray-50 transition ${
-                          selectedCountry.code === country.code
-                            ? "bg-yellow-50"
-                            : ""
-                        }`}
-                      >
-                        <Image
-                          src={getFlagUrl(country.code)}
-                          alt={country.name}
-                          width={24}
-                          height={18}
-                          className="object-cover rounded-sm mr-3"
-                          style={{ width: "24px", height: "18px" }}
-                          unoptimized
-                        />
-                        <span className="flex-1 text-left text-gray-700 font-medium">
-                          {country.name}
-                        </span>
-                        <span className="text-gray-500 text-sm">
-                          {country.dialCode}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                )}
+              <div className="flex items-center px-3 py-3.5 border-r border-gray-200">
+                <Image
+                  src={getFlagUrl(selectedCountry.code)}
+                  alt={selectedCountry.name}
+                  width={20}
+                  height={15}
+                  className="object-cover rounded-sm"
+                  style={{ width: "20px", height: "15px" }}
+                  unoptimized
+                />
+                <span className="ml-1.5 text-gray-700 font-medium text-sm">
+                  {selectedCountry.dialCode}
+                </span>
               </div>
               <input
+                id="hero-phone-input"
                 value={phone}
                 onChange={(e) => {
                   const value = e.target.value.replace(/\D/g, "");
@@ -306,7 +223,7 @@ export default function HeroSection() {
                 className="flex items-center gap-1.5 px-6 py-2.5 m-1.5 bg-[#F4D300] disabled:bg-[#F4D300]/90 text-black font-bold text-sm rounded-lg hover:bg-yellow-400 transition disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                 style={{ minWidth: 130 }}
               >
-                {isSubmitting ? "Sending..." : "Let's Connect"}
+                {isSubmitting ? "Sending..." : "Get Started at 499/-"}
               </button>
             </form>
             {submitStatus === "success" && (

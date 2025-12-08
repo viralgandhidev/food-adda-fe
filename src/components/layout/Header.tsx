@@ -184,7 +184,7 @@ export default function Header({
               alt="Logo"
               width={100}
               height={100}
-              className="w-16 h-16"
+              className="w-24 h-24"
             />
           </Link>
           {/* Navigation */}
