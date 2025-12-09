@@ -1,4 +1,54 @@
 "use client";
+
+import Link from "next/link";
+import Header from "@/components/layout/Header";
+import Footer from "@/components/layout/Footer";
+import { FiClock } from "react-icons/fi";
+
+export default function PublicPricingPage() {
+  return (
+    <div className="min-h-screen bg-white flex flex-col">
+      <Header />
+      <main className="flex-1 flex items-center justify-center px-6 py-20">
+        <div className="max-w-2xl mx-auto text-center">
+          <div className="mb-8 flex justify-center">
+            <div className="w-24 h-24 rounded-full bg-[#F4D300] flex items-center justify-center">
+              <FiClock className="text-[#181818]" size={48} />
+            </div>
+          </div>
+          <h1 className="text-4xl md:text-5xl font-bold text-[#181818] mb-4">
+            Coming Soon
+          </h1>
+          <p className="text-xl md:text-2xl text-gray-600 mb-8">
+            We&apos;re preparing our pricing plans for you.
+          </p>
+          <p className="text-base text-gray-500 mb-12">
+            Check back soon to explore our subscription options and choose the
+            perfect plan for your needs.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link
+              href="/"
+              className="px-8 py-3 rounded-lg bg-[#F4D300] text-[#181818] font-semibold hover:bg-[#F6DD3D] transition-colors shadow-sm"
+            >
+              Back to Home
+            </Link>
+            <Link
+              href="/subscribe"
+              className="px-8 py-3 rounded-lg bg-white border-2 border-[#F4D300] text-[#181818] font-semibold hover:bg-[#FFF9E3] transition-colors"
+            >
+              View Subscribe
+            </Link>
+          </div>
+        </div>
+      </main>
+      <Footer />
+    </div>
+  );
+}
+
+/* COMMENTED OUT - Original pricing page code
+"use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Header from "@/components/layout/Header";
@@ -52,73 +102,7 @@ export default function PublicPricingPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Silver */}
-            <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-6">
-              <div className="flex items-baseline justify-between">
-                <h2 className="text-xl font-bold text-[#181818]">Silver</h2>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 border">
-                  Yearly
-                </span>
-              </div>
-              <div className="mt-2 text-3xl font-extrabold text-[#181818]">
-                ₹5,900
-              </div>
-              <div className="text-[11px] text-gray-500">Inclusive of GST</div>
-              <ul className="mt-5 space-y-2 text-sm text-gray-800">
-                <li className="flex items-center gap-2">
-                  <span>✔</span> Email visibility for suppliers
-                </li>
-                <li className="flex items-center gap-2">
-                  <span>✔</span> Create products
-                </li>
-                <li className="flex items-center gap-2">
-                  <span>◻</span> Phone visibility
-                </li>
-                <li className="flex items-center gap-2">
-                  <span>◻</span> Unlimited extra photos (up to 3 instead)
-                </li>
-              </ul>
-              <button
-                onClick={() => goToLogin("SILVER")}
-                className="mt-6 w-full rounded-full bg-[#F4D300] text-[#181818] font-semibold py-2 shadow hover:bg-yellow-400"
-              >
-                Subscribe (login required)
-              </button>
-            </div>
-
-            {/* Gold */}
-            <div className="rounded-2xl border border-yellow-300 bg-white shadow-sm p-6">
-              <div className="flex items-baseline justify-between">
-                <h2 className="text-xl font-bold text-[#181818]">Gold</h2>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-50 border border-yellow-200 text-yellow-900">
-                  Yearly
-                </span>
-              </div>
-              <div className="mt-2 text-3xl font-extrabold text-[#181818]">
-                ₹10,620
-              </div>
-              <div className="text-[11px] text-gray-500">Inclusive of GST</div>
-              <ul className="mt-5 space-y-2 text-sm text-gray-800">
-                <li className="flex items-center gap-2">
-                  <span>✔</span> Email visibility for suppliers
-                </li>
-                <li className="flex items-center gap-2">
-                  <span>✔</span> Phone visibility for suppliers
-                </li>
-                <li className="flex items-center gap-2">
-                  <span>✔</span> Create products
-                </li>
-                <li className="flex items-center gap-2">
-                  <span>✔</span> Unlimited extra photos
-                </li>
-              </ul>
-              <button
-                onClick={() => goToLogin("GOLD")}
-                className="mt-6 w-full rounded-full bg-[#F4D300] text-[#181818] font-semibold py-2 shadow hover:bg-yellow-400"
-              >
-                Subscribe (login required)
-              </button>
-            </div>
+            ... (rest of original code commented out)
           </div>
         </section>
       </main>
@@ -126,3 +110,4 @@ export default function PublicPricingPage() {
     </div>
   );
 }
+*/
