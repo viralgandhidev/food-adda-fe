@@ -35,11 +35,26 @@ apiMultipart.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
+    // Only redirect to login for 401 errors on routes that require authentication
+    // Don't redirect for optional auth routes like /products/top-viewed
     if (error.response?.status === 401) {
-      // Handle unauthorized access
-      localStorage.removeItem("token");
-      window.location.href = "/login";
+      const url = error.config?.url || "";
+      // Skip redirect for public/optional auth endpoints that use optionalAuthenticate
+      const publicEndpoints = [
+        "/products/top-viewed",
+        "/categories",
+        "/products/",
+      ];
+      const isPublicEndpoint = publicEndpoints.some((endpoint) =>
+        url.includes(endpoint),
+      );
+
+      if (!isPublicEndpoint) {
+        // Handle unauthorized access for protected routes
+        localStorage.removeItem("token");
+        window.location.href = "/login";
+      }
     }
     return Promise.reject(error);
-  }
+  },
 );

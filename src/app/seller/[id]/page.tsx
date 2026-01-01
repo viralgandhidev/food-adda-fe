@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { api } from "@/lib/api";
@@ -12,6 +12,7 @@ import {
   FiMapPin,
   FiUser,
   FiLock,
+  FiMessageCircle,
 } from "react-icons/fi";
 import { authService } from "@/services/auth";
 
@@ -52,6 +53,7 @@ function getFullImageUrl(imageUrl?: string) {
 
 export default function SupplierDetailsPage() {
   const { id } = useParams();
+  const router = useRouter();
   const [supplier, setSupplier] = useState<Supplier | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -186,6 +188,26 @@ export default function SupplierDetailsPage() {
                 </p>
               </div>
             </div>
+
+            {/* Chat Button */}
+            {isLoggedIn && (
+              <div className="flex justify-start">
+                <button
+                  onClick={async () => {
+                    try {
+                      // Navigate to chat page with supplier_id query param
+                      router.push(`/chat?supplier_id=${id}`);
+                    } catch (error) {
+                      console.error("Error navigating to chat:", error);
+                    }
+                  }}
+                  className="flex items-center gap-2 px-6 py-3 rounded-full bg-[#F4D300] text-[#181818] font-semibold hover:bg-[#F6DD3D] transition-colors shadow-sm"
+                >
+                  <FiMessageCircle size={20} />
+                  Chat Now
+                </button>
+              </div>
+            )}
 
             {/* Company Details */}
             <div className="bg-white rounded-2xl shadow-lg p-6">

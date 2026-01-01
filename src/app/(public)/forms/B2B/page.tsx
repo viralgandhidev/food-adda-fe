@@ -208,10 +208,6 @@ export default function B2BFormPage() {
   const [categoriesFlat, setCategoriesFlat] = useState<CategoryNode[]>([]);
   const [mainCategory, setMainCategory] = useState("");
   const [subCategory, setSubCategory] = useState("");
-  const [allKeywords, setAllKeywords] = useState<
-    { id: string; name: string }[]
-  >([]);
-  const [selectedKeywordId, setSelectedKeywordId] = useState("");
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
@@ -289,18 +285,6 @@ export default function B2BFormPage() {
     fetchCategories();
   }, []);
 
-  // Fetch keywords
-  useEffect(() => {
-    const fetchKeywords = async () => {
-      try {
-        const res = await api.get("/keywords/all");
-        setAllKeywords(res.data.data || []);
-      } catch (err) {
-        console.error("Error fetching keywords:", err);
-      }
-    };
-    fetchKeywords();
-  }, []);
 
   // Fetch suppliers with filters
   const fetchSuppliers = useCallback(async () => {
@@ -320,7 +304,7 @@ export default function B2BFormPage() {
       };
       if (mainCategory) params.mainCategoryId = mainCategory;
       if (subCategory) params.subCategoryId = subCategory;
-      if (selectedKeywordId) params.keywordId = selectedKeywordId;
+      // Keywords removed from suppliers filter
       if (minPrice) params.minPrice = minPrice;
       if (maxPrice) params.maxPrice = maxPrice;
       if (isVeg)
@@ -340,7 +324,6 @@ export default function B2BFormPage() {
     page,
     mainCategory,
     subCategory,
-    selectedKeywordId,
     minPrice,
     maxPrice,
     isVeg,
@@ -644,38 +627,6 @@ export default function B2BFormPage() {
                           </option>
                         ))}
                     </select>
-                  </div>
-                </div>
-
-                {/* Keywords */}
-                <div className="mb-6">
-                  <h4 className="text-sm font-semibold text-gray-700 mb-2">
-                    Keywords
-                  </h4>
-                  <div className="max-h-56 overflow-auto rounded-lg border border-gray-200 p-2 bg-gray-50">
-                    {allKeywords.map((k) => {
-                      const checked = selectedKeywordId === k.id;
-                      return (
-                        <label
-                          key={k.id}
-                          className="flex items-center gap-2 py-1 px-2 hover:bg-white rounded cursor-pointer"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={(e) => {
-                              const next = e.target.checked ? k.id : "";
-                              setSelectedKeywordId(next);
-                              setPage(1);
-                            }}
-                            className="h-4 w-4 accent-yellow-400"
-                          />
-                          <span className="text-sm text-gray-800">
-                            {k.name}
-                          </span>
-                        </label>
-                      );
-                    })}
                   </div>
                 </div>
 

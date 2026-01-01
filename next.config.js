@@ -8,6 +8,7 @@ const nextConfig = {
       "source.unsplash.com",
       "example.com",
       "api.foodadda.in",
+      "localhost:3000",
     ],
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },

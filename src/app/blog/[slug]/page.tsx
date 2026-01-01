@@ -5,9 +5,11 @@ import Image from "next/image";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { use } from "react";
 
-export default function BlogDetail({ params }: { params: { slug: string } }) {
-  const post = blogs.find((b) => b.slug === params.slug);
+export default function BlogDetail({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = use(params);
+  const post = blogs.find((b) => b.slug === slug);
   if (!post) {
     return (
       <div className="px-6 md:px-12 py-16 max-w-5xl mx-auto">
@@ -102,13 +104,21 @@ export default function BlogDetail({ params }: { params: { slug: string } }) {
             {post.body}
           </ReactMarkdown>
 
-          <div className="mt-8">
+          <div className="mt-8 pt-6 border-t border-gray-200 flex flex-col gap-4">
             <Link
               href="/dashboard"
-              className="inline-flex items-center px-5 py-2 rounded-full bg-[#F4D300] text-[#181818] font-semibold"
+              className="inline-flex items-center px-5 py-2 rounded-full bg-[#F4D300] text-[#181818] font-semibold w-fit"
             >
               Back to home
             </Link>
+            <div className="text-sm text-gray-600">
+              <Link
+                href="/legal-disclaimer"
+                className="text-[#F4D300] hover:underline"
+              >
+                Legal Disclaimer for Blogs
+              </Link>
+            </div>
           </div>
         </div>
       </div>

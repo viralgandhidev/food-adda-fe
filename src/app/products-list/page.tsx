@@ -109,7 +109,6 @@ function ProductsListContent() {
     tab?: "products" | "suppliers";
     mainCategoryId?: string;
     subCategoryId?: string;
-    keywordId?: string | null | undefined;
   }) => {
     const usp = new URLSearchParams();
     usp.set("page", String(params.page ?? 1));
@@ -119,25 +118,16 @@ function ProductsListContent() {
     if (mainVal) usp.set("mainCategoryId", mainVal);
     const subVal = params.subCategoryId ?? subCategory;
     if (subVal) usp.set("subCategoryId", subVal);
-    const kwVal =
-      params.keywordId !== undefined
-        ? params.keywordId || undefined
-        : selectedKeywordId || undefined;
-    if (kwVal) usp.set("keywordId", kwVal);
     router.push(`/products-list?${usp.toString()}`);
   };
 
-  // Fetch categories tree for filter and all keywords
+  // Fetch categories tree for filter
   useEffect(() => {
     api.get("/categories/tree").then((res) => {
       setCategoryTree(res.data.data || []);
     });
     api.get("/categories").then((res) => {
       setCategoriesFlat(res.data.data || []);
-    });
-    api.get("/keywords/all").then((res) => {
-      const items = (res.data?.data || []) as { id: string; name: string }[];
-      setAllKeywords(items);
     });
   }, []);
 
@@ -164,19 +154,14 @@ function ProductsListContent() {
     const t = setTimeout(async () => {
       try {
         setSearchLoading(true);
-        const [res, kw] = await Promise.all([
-          api.get("/products", { params: { q: search, limit: 5 } }),
-          api.get("/keywords/search", { params: { q: search, limit: 5 } }),
-        ]);
+        const res = await api.get("/products", { params: { q: search, limit: 5 } });
         const items = (res.data?.data || []) as Array<{
           id: string;
           name: string;
           image_url?: string;
         }>;
         setSuggestions(items.slice(0, 5));
-        setKwSuggestions(
-          (kw.data?.data || []) as Array<{ id: string; name: string }>
-        );
+        setKwSuggestions([]);
         setOpenSuggest(true);
       } catch {
         setSuggestions([]);
@@ -215,7 +200,6 @@ function ProductsListContent() {
     debouncedSearch,
     mainCategory,
     subCategory,
-    selectedKeywordId,
     debouncedMinPrice,
     debouncedMaxPrice,
     isVeg,
@@ -229,15 +213,8 @@ function ProductsListContent() {
     const urlCategoryId = searchParams.get("categoryId") || "";
     const urlMain = searchParams.get("mainCategoryId") || "";
     const urlSub = searchParams.get("subCategoryId") || "";
-    const urlKw = searchParams.get("keywordId") || ""; // back-compat
-    const urlKws = searchParams.get("keywordIds") || "";
     if (urlMain !== mainCategory) setMainCategory(urlMain);
     if (urlSub !== subCategory) setSubCategory(urlSub || urlCategoryId);
-    const parsed =
-      urlKw || (urlKws ? urlKws.split(",").filter(Boolean)[0] || "" : "");
-    if (parsed !== selectedKeywordId) {
-      setSelectedKeywordId(parsed);
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
@@ -260,7 +237,7 @@ function ProductsListContent() {
       if (debouncedSearch) params.q = debouncedSearch;
       if (mainCategory) params.mainCategoryId = mainCategory;
       if (subCategory) params.subCategoryId = subCategory;
-      if (selectedKeywordId) params.keywordId = selectedKeywordId;
+      // Keywords removed from products filter
       if (debouncedMinPrice) params.minPrice = debouncedMinPrice;
       if (debouncedMaxPrice) params.maxPrice = debouncedMaxPrice;
       if (isVeg)
@@ -296,7 +273,7 @@ function ProductsListContent() {
       if (debouncedSearch) params.q = debouncedSearch;
       if (mainCategory) params.mainCategoryId = mainCategory;
       if (subCategory) params.subCategoryId = subCategory;
-      if (selectedKeywordId) params.keywordId = selectedKeywordId;
+      // Keywords removed from suppliers filter
       if (debouncedMinPrice) params.minPrice = debouncedMinPrice;
       if (debouncedMaxPrice) params.maxPrice = debouncedMaxPrice;
       if (isVeg)
@@ -442,60 +419,6 @@ function ProductsListContent() {
                     </select>
                   </div>
                 </div>
-              </div>
-
-              {/* Keywords */}
-              <div className="mb-6">
-                <h4 className="text-sm font-semibold text-gray-700 mb-2">
-                  Keywords
-                </h4>
-                <div className="max-h-56 overflow-auto rounded-lg border border-gray-200 p-2 bg-gray-50">
-                  {allKeywords.map((k) => {
-                    const checked = selectedKeywordId === k.id;
-                    return (
-                      <label
-                        key={k.id}
-                        className="flex items-center gap-2 py-1 px-2 hover:bg-white rounded cursor-pointer"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={(e) => {
-                            const next = e.target.checked ? k.id : "";
-                            setSelectedKeywordId(next);
-                            pushWithParams({
-                              page: 1,
-                              keywordId: next || undefined,
-                            });
-                          }}
-                          className="h-4 w-4 accent-yellow-400"
-                        />
-                        <span className="text-sm text-gray-800">{k.name}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-                {selectedKeywordId && (
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {(() => {
-                      const kw = allKeywords.find(
-                        (item) => item.id === selectedKeywordId
-                      );
-                      if (!kw) return null;
-                      return (
-                        <button
-                          onClick={() => {
-                            setSelectedKeywordId("");
-                            pushWithParams({ page: 1, keywordId: undefined });
-                          }}
-                          className="px-2 py-1 rounded-full border border-yellow-300 bg-yellow-100 text-yellow-800 text-xs"
-                        >
-                          {kw.name} ×
-                        </button>
-                      );
-                    })()}
-                  </div>
-                )}
               </div>
 
               {/* Diet */}
@@ -651,24 +574,22 @@ function ProductsListContent() {
                   placeholder={
                     activeTab === "products"
                       ? "Search for products, brands, categories..."
-                      : "Search suppliers by products, categories, keywords..."
+                      : "Search suppliers by products, categories..."
                   }
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="w-full h-14 text-lg bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#F4D300] focus:border-[#F4D300] transition placeholder:text-gray-400 text-gray-900 font-medium shadow-lg pl-14 pr-14"
                 />
                 {openSuggest &&
-                  (suggestions.length > 0 ||
-                    kwSuggestions.length > 0 ||
-                    searchLoading) && (
+                  (suggestions.length > 0 || searchLoading) && (
                     <div className="absolute z-20 mt-2 w-full bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
                       {searchLoading && (
                         <div className="px-4 py-3 text-sm text-gray-500">
                           Searching…
                         </div>
                       )}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
-                        <div className="border-b md:border-b-0 md:border-r border-gray-100">
+                      <div className="grid grid-cols-1 gap-0">
+                        <div>
                           <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">
                             Products
                           </div>
@@ -705,40 +626,6 @@ function ProductsListContent() {
                             {!searchLoading && suggestions.length === 0 && (
                               <li className="px-4 py-3 text-sm text-gray-500">
                                 No products
-                              </li>
-                            )}
-                          </ul>
-                        </div>
-                        <div>
-                          <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                            Keywords
-                          </div>
-                          <ul className="max-h-72 overflow-auto">
-                            {kwSuggestions.map((k) => (
-                              <li key={k.id} className="hover:bg-gray-50">
-                                <button
-                                  className="w-full text-left flex items-center gap-3 px-4 py-3"
-                                  onClick={() => {
-                                    setSelectedKeywordId(k.id);
-                                    setOpenSuggest(false);
-                                    pushWithParams({
-                                      page: 1,
-                                      keywordId: k.id,
-                                    });
-                                  }}
-                                >
-                                  <div className="w-10 h-10 rounded bg-yellow-100 text-yellow-800 flex items-center justify-center text-sm font-semibold">
-                                    #
-                                  </div>
-                                  <div className="flex-1 text-sm font-medium text-gray-900">
-                                    {k.name}
-                                  </div>
-                                </button>
-                              </li>
-                            ))}
-                            {!searchLoading && kwSuggestions.length === 0 && (
-                              <li className="px-4 py-3 text-sm text-gray-500">
-                                No keywords
                               </li>
                             )}
                           </ul>

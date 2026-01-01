@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo, useCallback, memo } from "react";
 import { toast } from "sonner";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import MainLayout from "@/components/layout/MainLayout";
@@ -12,15 +12,15 @@ import { useRouter } from "next/navigation";
 import { FiSearch } from "react-icons/fi";
 import { FiBox, FiCheckCircle, FiPackage, FiUser } from "react-icons/fi";
 import { ReactNode } from "react";
-import CategoriesSection from "@/components/home/CategoriesSection";
 import Link from "next/link";
 import { useAuthStore } from "@/store/auth";
 
 interface Category {
   id: string;
   name: string;
-  image_url: string;
+  image_url?: string;
   product_count: number;
+  parent_id?: string | null;
 }
 
 interface ProductImage {
@@ -73,6 +73,62 @@ const categoryIcons: Record<string, ReactNode> = {
   "Food Consultants & Chefs": <FiUser size={28} />,
   "Regulatory Consultants & Food Testing Labs": <FiCheckCircle size={28} />,
 };
+
+// Memoized category card component
+const CategoryCard = memo(
+  ({
+    category,
+    hasImageError,
+    onImageError,
+  }: {
+    category: {
+      id: string;
+      name: string;
+      image_url?: string;
+      productCount: number;
+    };
+    hasImageError: boolean;
+    onImageError: (id: string) => void;
+  }) => (
+    <Link
+      href={`/products-list?page=1&categoryId=${category.id}`}
+      className="bg-white rounded-xl overflow-hidden transition-shadow cursor-pointer flex flex-col border-none hover:shadow-lg"
+      style={{ boxShadow: "5px 5px 35px 0px #00000014" }}
+    >
+      <div className="relative w-full h-48 bg-gray-100">
+        {category.image_url && !hasImageError ? (
+          <Image
+            src={
+              category.image_url.startsWith("/images/")
+                ? category.image_url
+                : getFullImageUrl(category.image_url)
+            }
+            alt={category.name}
+            fill
+            className="object-cover"
+            onError={() => onImageError(category.id)}
+            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 25vw"
+            loading="lazy"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gray-200">
+            <FiBox size={48} className="text-gray-400" />
+          </div>
+        )}
+      </div>
+      <div className="p-6">
+        <h4 className="text-lg font-bold text-[#000] mb-1 font-lato">
+          {category.name}
+        </h4>
+        <p className="text-sm text-gray-600 font-lato">
+          {category.productCount} Product
+          {category.productCount !== 1 ? "s" : ""}
+        </p>
+      </div>
+    </Link>
+  )
+);
+CategoryCard.displayName = "CategoryCard";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -144,7 +200,12 @@ export default function DashboardPage() {
         setProducts(latestRes.data.data);
 
         const categoriesRes = await api.get("/categories");
-        setCategories(categoriesRes.data.data);
+        const allCategories = categoriesRes.data.data || [];
+        // Filter out sub-categories (categories with parent_id)
+        const mainCategories = allCategories.filter(
+          (cat: Category) => !cat.parent_id
+        );
+        setCategories(mainCategories);
 
         if (user?.id) {
           const metricsRes = await api.get(`/suppliers/${user.id}/metrics`);
@@ -246,13 +307,67 @@ export default function DashboardPage() {
     router.push(`/products-list?${params.toString()}`);
   };
 
-  const mappedCategories = categories.map((cat) => ({
-    id: cat.id,
-    name: cat.name,
-    description: categoryDescriptions[cat.name] || "Category description...",
-    icon: categoryIcons[cat.name] || <FiBox size={28} />,
-    productCount: cat.product_count,
-  }));
+  // Mapping of category names to local image files
+  const categoryImageMap: Record<string, string> = useMemo(
+    () => ({
+      "Meat, Poultry & Seafood": "/images/categories/meat.png",
+      "Dairy & Dairy Alternatives": "/images/categories/dairy.png",
+      "Grains, Pulses & Cereals": "/images/categories/grains.png",
+      "Fresh Produce": "/images/categories/fresh-produce.png",
+      "Cold Chain & Logistics": "/images/categories/cold-chains.png",
+      "Food Processing & Machinery": "/images/categories/machinery.png",
+      "Agri & Farm Supplies": "/images/categories/agri-farm-supplies.png",
+      "Indian Snacks & Sweets": "/images/categories/indian-snacks.png",
+      "Food Testing & Certification": "/images/categories/food-testing.png",
+      Training: "/images/categories/training.png",
+      Consultancy: "/images/categories/consultancy.png",
+      "Branding, Marketing & Design": "/images/categories/branding.png",
+      "Food Testing": "/images/categories/food-testing.png",
+      "Indian Snacks": "/images/categories/indian-snacks.png",
+      "Agri Farm Supplies": "/images/categories/agri-farm-supplies.png",
+      Machinery: "/images/categories/machinery.png",
+      "Cold Chains": "/images/categories/cold-chains.png",
+      "Packaging & Allied Products": "/images/categories/allied-products.png",
+      "HoReCa & Institutional Supplies": "/images/categories/horeca.png",
+      "Food Ingredients & Additives": "/images/categories/food-ingredients.png",
+      "Health, Organic & Specialty Foods": "/images/categories/health.png",
+      "Packaged & Processed Foods": "/images/categories/packaged.png",
+      Bakery: "/images/categories/bakery.png",
+      "Bakery, Confectionery & Snacks": "/images/categories/bakery.png",
+      "Oils, Fats & Spices": "/images/categories/oils.png",
+      Beverages: "/images/categories/beverages.png",
+    }),
+    []
+  );
+
+  const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
+
+  // Memoize the image error handler to prevent re-creating it on every render
+  const handleImageError = useCallback((categoryId: string) => {
+    setImageErrors((prev) => {
+      if (prev.has(categoryId)) return prev; // Already in set, no need to update
+      const newSet = new Set(prev);
+      newSet.add(categoryId);
+      return newSet;
+    });
+  }, []);
+
+  const mappedCategories = useMemo(() => {
+    if (categories.length === 0) return [];
+
+    return categories.map((cat) => {
+      // Use local image if available, otherwise fall back to API image_url
+      const localImage = categoryImageMap[cat.name];
+      const imageUrl = localImage || cat.image_url;
+
+      return {
+        id: cat.id,
+        name: cat.name,
+        productCount: cat.product_count,
+        image_url: imageUrl,
+      };
+    });
+  }, [categories, categoryImageMap]);
 
   return (
     <ProtectedRoute>
@@ -614,12 +729,29 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        {/* Featured Categories - compact cards, no redundant CTA */}
+        {/* Featured Categories */}
         <section className="px-6 md:px-[135px] mt-10">
-          <h3 className="text-lg font-semibold text-[#181818] mb-4">
-            Featured Categories
-          </h3>
-          <CategoriesSection compact categories={mappedCategories} />
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-2xl md:text-[42px] font-bold text-[#363530] font-lato">
+              Explore our wide range of categories
+            </h3>
+            <Link
+              href="/categories"
+              className="px-5 py-2 rounded-4xl bg-[#F4D300] text-[#1C1A1A] font-semibold text-sm hover:bg-[#F6DD3D] transition-colors shadow-sm font-lato inline-block"
+            >
+              View all
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-9">
+            {mappedCategories.slice(0, 8).map((cat) => (
+              <CategoryCard
+                key={cat.id}
+                category={cat}
+                hasImageError={imageErrors.has(cat.id)}
+                onImageError={handleImageError}
+              />
+            ))}
+          </div>
         </section>
 
         {/* Suggested Businesses removed as requested */}

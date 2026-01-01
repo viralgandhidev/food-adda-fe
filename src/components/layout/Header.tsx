@@ -1,7 +1,7 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import { FiLogOut, FiChevronRight } from "react-icons/fi";
+import { FiLogOut, FiChevronRight, FiMessageCircle } from "react-icons/fi";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
@@ -22,6 +22,7 @@ export default function Header({
   const [hydrated, setHydrated] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showMega, setShowMega] = useState<"B2B" | "B2C" | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   // Determine text color based on background
   const isDarkBg = bgColor === "#1C1A1A";
@@ -88,6 +89,39 @@ export default function Header({
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
   }, []);
+
+  // Fetch unread chat count
+  useEffect(() => {
+    if (!isLoggedIn || !hydrated) {
+      setUnreadCount(0);
+      return;
+    }
+
+    const fetchUnreadCount = async () => {
+      try {
+        const response = await api.get("/chat/unread-count");
+        setUnreadCount(response.data.data?.count || 0);
+      } catch (error) {
+        // Silently fail - user might not have subscription
+        setUnreadCount(0);
+      }
+    };
+
+    fetchUnreadCount();
+    // Poll every 30 seconds for new messages
+    const interval = setInterval(fetchUnreadCount, 30000);
+    
+    // Also refresh when chat is marked as read (custom event from chat page)
+    const handleChatReadUpdate = () => {
+      fetchUnreadCount();
+    };
+    window.addEventListener('chat-read-updated', handleChatReadUpdate);
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('chat-read-updated', handleChatReadUpdate);
+    };
+  }, [isLoggedIn, hydrated]);
 
   // Fetch categories for mega menu
   useEffect(() => {
@@ -255,6 +289,18 @@ export default function Header({
               >
                 Subscribe
               </Link>
+              <Link
+                href="/chat"
+                className="relative px-4 py-2 rounded-full bg-white border border-gray-300 text-[#1C1A1A] font-semibold shadow hover:bg-gray-50 transition"
+                title="Chats"
+              >
+                <FiMessageCircle size={20} />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </Link>
             </>
           )}
 
@@ -276,10 +322,10 @@ export default function Header({
                 Log in
               </Link>
               <Link
-                href="/signup"
+                href="/subscribe"
                 className="px-5 py-2 rounded-full bg-[#F4D300] text-[#1C1A1A] font-semibold shadow hover:bg-yellow-400 transition"
               >
-                Sign up
+                Subscribe
               </Link>
             </div>
           )}

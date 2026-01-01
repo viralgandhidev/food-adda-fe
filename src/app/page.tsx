@@ -2,7 +2,7 @@
 
 import MainLayout from "@/components/layout/MainLayout";
 import HeroSection from "@/components/home/HeroSection";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import Image from "next/image";
 import {
@@ -39,11 +39,67 @@ interface CategoryApi {
   name: string;
   image_url?: string;
   product_count: number;
+  parent_id?: string | null;
 }
+
+// Memoized category card component to prevent re-renders when parent state changes
+const CategoryCard = memo(
+  ({
+    category,
+    hasImageError,
+    onImageError,
+  }: {
+    category: {
+      id: string;
+      name: string;
+      image_url?: string;
+      productCount: number;
+    };
+    hasImageError: boolean;
+    onImageError: (id: string) => void;
+  }) => (
+    <Link
+      href={`/products-list?page=1&categoryId=${category.id}`}
+      className="bg-white rounded-xl overflow-hidden transition-shadow cursor-pointer flex flex-col border-none"
+      style={{ boxShadow: "5px 5px 35px 0px #00000014" }}
+    >
+      <div className="relative w-full h-48 bg-gray-100">
+        {category.image_url && !hasImageError ? (
+          <Image
+            src={
+              category.image_url.startsWith("/images/")
+                ? category.image_url
+                : getFullImageUrl(category.image_url)
+            }
+            alt={category.name}
+            fill
+            className="object-cover"
+            onError={() => onImageError(category.id)}
+            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 25vw"
+            loading="lazy"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gray-200">
+            <FiBox size={48} className="text-gray-400" />
+          </div>
+        )}
+      </div>
+      <div className="p-6">
+        <h4 className="text-lg font-bold text-[#000] mb-1 font-lato">
+          {category.name}
+        </h4>
+        <p className="text-sm text-gray-600 font-lato">
+          {category.productCount} Product
+          {category.productCount !== 1 ? "s" : ""}
+        </p>
+      </div>
+    </Link>
+  )
+);
+CategoryCard.displayName = "CategoryCard";
 
 export default function LandingPage() {
   const [categories, setCategories] = useState<CategoryApi[]>([]);
-  const [showAllCategories, setShowAllCategories] = useState(false);
   interface TopProduct {
     id: string;
     name: string;
@@ -99,11 +155,11 @@ export default function LandingPage() {
       // If Authentic Products section top is at or above the header bottom, we've scrolled past it
       // Change to light background when header's bottom scrolls past Authentic Products section top
       // Change back to dark when scrolling back up above Authentic Products section
-      if (authenticProductsRect.top <= headerBottom) {
-        setHeaderBgColor("#FDFDFF");
-      } else {
-        setHeaderBgColor("#1C1A1A");
-      }
+      const newBgColor =
+        authenticProductsRect.top <= headerBottom ? "#FDFDFF" : "#1C1A1A";
+
+      // Only update state if color actually changed to prevent unnecessary re-renders
+      setHeaderBgColor((prev) => (prev !== newBgColor ? newBgColor : prev));
     };
 
     // Initial check after a delay to ensure DOM is ready
@@ -192,16 +248,89 @@ export default function LandingPage() {
     return () => clearInterval(id);
   }, [aboutSlides.length]);
   useEffect(() => {
+    let cancelled = false;
+
     api
       .get("/categories")
-      .then((res) => setCategories(res.data?.data || []))
-      .catch(() => setCategories([]));
+      .then((res) => {
+        if (cancelled) return;
+        const allCategories = res.data?.data || [];
+        // Filter out sub-categories (categories with parent_id)
+        const mainCategories = allCategories.filter(
+          (cat: CategoryApi) => !cat.parent_id
+        );
+        // Only update state if data actually changed (compare by IDs)
+        setCategories((prev) => {
+          const prevIds = prev
+            .map((c: CategoryApi) => c.id)
+            .sort()
+            .join(",");
+          const newIds = mainCategories
+            .map((c: CategoryApi) => c.id)
+            .sort()
+            .join(",");
+          if (prevIds === newIds) return prev;
+          return mainCategories;
+        });
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setCategories((prev) => (prev.length === 0 ? prev : []));
+        }
+      });
 
     api
       .get("/products/top-viewed", { params: { limit: 8 } })
-      .then((res) => setTopProducts(res.data?.data || []))
-      .catch(() => setTopProducts([]));
+      .then((res) => {
+        if (cancelled) return;
+        setTopProducts(res.data?.data || []);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        console.error("Error fetching top products:", error);
+        // Only set empty array if it's not a 401 (401 will redirect via interceptor)
+        if (error.response?.status !== 401) {
+          setTopProducts([]);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
+
+  // Mapping of category names to local image files
+  const categoryImageMap: Record<string, string> = useMemo(
+    () => ({
+      "Meat, Poultry & Seafood": "/images/categories/meat.png",
+      "Dairy & Dairy Alternatives": "/images/categories/dairy.png",
+      "Grains, Pulses & Cereals": "/images/categories/grains.png",
+      "Fresh Produce": "/images/categories/fresh-produce.png",
+      "Cold Chain & Logistics": "/images/categories/cold-chains.png",
+      "Food Processing & Machinery": "/images/categories/machinery.png",
+      "Agri & Farm Supplies": "/images/categories/agri-farm-supplies.png",
+      "Indian Snacks & Sweets": "/images/categories/indian-snacks.png",
+      "Food Testing & Certification": "/images/categories/food-testing.png",
+      Training: "/images/categories/training.png",
+      Consultancy: "/images/categories/consultancy.png",
+      "Branding, Marketing & Design": "/images/categories/branding.png",
+      "Food Testing": "/images/categories/food-testing.png",
+      "Indian Snacks": "/images/categories/indian-snacks.png",
+      "Agri Farm Supplies": "/images/categories/agri-farm-supplies.png",
+      Machinery: "/images/categories/machinery.png",
+      "Cold Chains": "/images/categories/cold-chains.png",
+      "Packaging & Allied Products": "/images/categories/allied-products.png",
+      "HoReCa & Institutional Supplies": "/images/categories/horeca.png",
+      "Food Ingredients & Additives": "/images/categories/food-ingredients.png",
+      "Health, Organic & Specialty Foods": "/images/categories/health.png",
+      "Packaged & Processed Foods": "/images/categories/packaged.png",
+      Bakery: "/images/categories/bakery.png",
+      "Bakery, Confectionery & Snacks": "/images/categories/bakery.png",
+      "Oils, Fats & Spices": "/images/categories/oils.png",
+      Beverages: "/images/categories/beverages.png",
+    }),
+    []
+  );
 
   const categoryDescriptions: Record<string, string> = useMemo(
     () => ({
@@ -229,19 +358,35 @@ export default function LandingPage() {
     []
   );
 
-  const mappedCategories = useMemo(
-    () =>
-      categories.map((cat) => ({
+  // Memoize the image error handler to prevent re-creating it on every render
+  const handleImageError = useCallback((categoryId: string) => {
+    setImageErrors((prev) => {
+      if (prev.has(categoryId)) return prev; // Already in set, no need to update
+      const newSet = new Set(prev);
+      newSet.add(categoryId);
+      return newSet;
+    });
+  }, []);
+
+  const mappedCategories = useMemo(() => {
+    if (categories.length === 0) return [];
+
+    return categories.map((cat) => {
+      // Use local image if available, otherwise fall back to API image_url
+      const localImage = categoryImageMap[cat.name];
+      const imageUrl = localImage || cat.image_url;
+
+      return {
         id: cat.id,
         name: cat.name,
         description:
           categoryDescriptions[cat.name] || "Category description...",
         icon: categoryIcons[cat.name] || <FiBox size={28} />,
         productCount: cat.product_count,
-        image_url: cat.image_url,
-      })),
-    [categories, categoryDescriptions, categoryIcons]
-  );
+        image_url: imageUrl,
+      };
+    });
+  }, [categories, categoryDescriptions, categoryIcons, categoryImageMap]);
   // Scroll to B2B/B2C section when URL hash is present
   const b2bRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
@@ -295,7 +440,7 @@ export default function LandingPage() {
         <h4 className="text-white text-2xl md:text-3xl font-extrabold font-lato">
           Features
         </h4>
-        <div className="mx-auto h-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-20 content-center mt-6">
+        <div className="h-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-20 content-center mt-6">
           {/* Authentic Products */}
           <div className="flex flex-col items-start gap-4 max-w-xs">
             <div className="w-[70px] h-[70px] rounded-full bg-[#F4D300] text-[#1C1A1A] flex items-center justify-center">
@@ -549,100 +694,23 @@ export default function LandingPage() {
           <h3 className="text-2xl md:text-[42px] font-bold text-[#363530] font-lato">
             Explore our wide range of categories
           </h3>
-          <button
-            onClick={() => setShowAllCategories(true)}
-            className="px-5 py-2 rounded-4xl bg-[#F4D300] text-[#1C1A1A] font-semibold text-sm hover:bg-[#F6DD3D] transition-colors shadow-sm font-lato"
+          <Link
+            href="/categories"
+            className="px-5 py-2 rounded-4xl bg-[#F4D300] text-[#1C1A1A] font-semibold text-sm hover:bg-[#F6DD3D] transition-colors shadow-sm font-lato inline-block"
           >
             View all
-          </button>
+          </Link>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-9">
           {mappedCategories.slice(0, 8).map((cat) => (
-            <Link
+            <CategoryCard
               key={cat.id}
-              href={`/products-list?page=1&categoryId=${cat.id}`}
-              className="bg-white rounded-xl overflow-hidden transition-shadow cursor-pointer flex flex-col border-none"
-              style={{ boxShadow: "5px 5px 35px 0px #00000014" }}
-            >
-              <div className="relative w-full h-48 bg-gray-100">
-                {cat.image_url && !imageErrors.has(cat.id) ? (
-                  <Image
-                    src={getFullImageUrl(cat.image_url)}
-                    alt={cat.name}
-                    fill
-                    className="object-cover"
-                    onError={() => {
-                      setImageErrors((prev) => new Set(prev).add(cat.id));
-                    }}
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gray-200">
-                    <FiBox size={48} className="text-gray-400" />
-                  </div>
-                )}
-              </div>
-              <div className="p-6">
-                <h4 className="text-lg font-bold text-[#000] mb-1 font-lato">
-                  {cat.name}
-                </h4>
-                <p className="text-sm text-gray-600 font-lato">
-                  {cat.productCount} Product{cat.productCount !== 1 ? "s" : ""}
-                </p>
-              </div>
-            </Link>
+              category={cat}
+              hasImageError={imageErrors.has(cat.id)}
+              onImageError={handleImageError}
+            />
           ))}
         </div>
-
-        {showAllCategories && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full relative max-h-[80vh] flex flex-col">
-              {/* Sticky Header */}
-              <div className="sticky top-0 z-10 bg-white flex items-center justify-between px-8 py-5 border-b border-gray-200 rounded-t-2xl">
-                <h3 className="text-2xl font-bold text-[#181818]">
-                  All Categories
-                </h3>
-                <button
-                  className="text-2xl text-[#181818] hover:text-[#F6DD3D] ml-4"
-                  onClick={() => setShowAllCategories(false)}
-                  aria-label="Close"
-                >
-                  &times;
-                </button>
-              </div>
-              {/* List */}
-              <div className="overflow-y-auto px-2 py-4 flex-1">
-                {mappedCategories.map((cat, idx) => (
-                  <Link
-                    key={cat.id}
-                    href={`/products-list?page=1&categoryId=${cat.id}`}
-                    className={`flex items-center gap-4 px-6 py-4 transition-colors rounded-lg hover:bg-gray-50 cursor-pointer ${
-                      idx !== mappedCategories.length - 1
-                        ? "border-b border-gray-100"
-                        : ""
-                    }`}
-                    onClick={() => setShowAllCategories(false)}
-                  >
-                    <span className="flex items-center justify-center w-10 h-10 rounded-full bg-[#FFF7C2] text-[#F4D300] text-xl shrink-0">
-                      {cat.icon}
-                    </span>
-                    <div className="flex flex-col gap-1">
-                      <span
-                        className="font-semibold text-base text-[#181818] leading-tight truncate overflow-hidden whitespace-nowrap max-w-[180px]"
-                        title={cat.name}
-                      >
-                        {cat.name}
-                      </span>
-                      <span className="inline-flex items-center gap-1 bg-[#F4D300] text-[#181818] font-semibold px-3 py-1 rounded-full text-xs w-fit mt-1 shadow-sm">
-                        {cat.productCount} Product
-                        {cat.productCount !== 1 ? "s" : ""}
-                      </span>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
       </section>
 
       {/* CTA Section */}
@@ -840,94 +908,92 @@ export default function LandingPage() {
       </section>
 
       {/* Subscription Section */}
-      <section className="px-6 md:px-[135px] py-10 md:pt-24 bg-[#1C1A1A] relative overflow-hidden">
+      <section className="px-6 md:px-[135px] py-10 md:py-32 md:pb-[500px] bg-[#1C1A1A] relative overflow-hidden">
         {/* Decorative background pattern */}
-        <div className="absolute overflow-hidden pointer-events-none right-0">
+        <div className="absolute overflow-hidden pointer-events-none right-0 top-[100px] bottom-0 hidden md:block">
           <Image
             src="/images/Group 1 (3).png"
             alt=""
             width={1200}
-            height={1000}
+            height={750}
             className="opacity-100"
-            style={{
-              height: "100%",
-            }}
           />
         </div>
 
-        <div className="relative z-10 flex mx-auto">
-          {/* Left: Text Content */}
-          <div className="text-white w-1/3">
-            <h3 className="text-3xl md:text-[58px] font-bold mb-4 font-lato leading-tight">
-              Subscribe to your{" "}
-              <span className="text-[#F4D300]">one-stop platform</span> for all
-              food industry needs.
-            </h3>
-            <p className="text-base md:text-[20px] text-gray-300 leading-relaxed font-lato">
-              From small businesses to large-scale enterprises, we empower food
-              industry professionals & businesses with a network to source,
-              connect, and grow.
-            </p>
-          </div>
+        <div className="relative z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-start">
+            {/* Left: Text Content */}
+            <div className="text-white">
+              <h3 className="text-3xl md:text-5xl lg:text-[58px] font-bold mb-4 font-lato leading-tight">
+                Subscribe to your{" "}
+                <span className="text-[#F4D300]">one-stop platform</span> for
+                all food industry needs.
+              </h3>
+              <p className="text-base md:text-lg lg:text-[20px] text-gray-300 leading-relaxed font-lato">
+                From small businesses to large-scale enterprises, we empower
+                food industry professionals & businesses with a network to
+                source, connect, and grow.
+              </p>
+            </div>
 
-          {/* Right: Pricing Card */}
-          <div
-            className="bg-white rounded-2xl shadow-lg p-8 mb-24 ml-[560px]"
-            style={{ width: "395px", maxWidth: "100%" }}
-          >
-            <div className="text-3xl text-[#4E4E4E] mb-4 font-lato">
-              Pricing
-            </div>
-            <div className="mb-6">
-              <div className="text-7xl font-bold text-[#191D23] mb-1 font-lato">
-                ₹5,900
+            {/* Right: Pricing Card */}
+            <div className="bg-white absolute right-[140px] top-0 rounded-2xl shadow-lg p-6 md:p-8 w-full lg:w-auto lg:max-w-[395px] lg:ml-auto">
+              <div className="text-3xl text-[#4E4E4E] mb-4 font-lato">
+                Pricing
               </div>
-              <div className="text-sm text-gray-600 font-lato">
-                /Year (incl. GST)
-              </div>
-            </div>
-            <Link
-              href="/subscribe"
-              className="block w-full text-center px-6 py-3 rounded-lg bg-[#F4D300] text-[#3A3A3A] font-semibold hover:bg-[#F6DD3D] transition-colors shadow-sm mb-6 font-lato"
-            >
-              Subscribe
-            </Link>
-            <div className="space-y-3">
-              {/* Silver plan features */}
-              {[
-                { label: "Limited Photo Upload (Up to 3)", included: true },
-                { label: "Access to Email Address", included: true },
-                {
-                  label: "Access to Minimum Order Quantity (MoQ)",
-                  included: true,
-                },
-                { label: "Video Upload (Up to 1)", included: true },
-                { label: "Access to Phone Number", included: false },
-                { label: "Access to Business Catalog", included: false },
-                { label: "Unlimited Browsing", included: false },
-                { label: "Direct Chat", included: false },
-              ].map((feature, index) => (
-                <div key={index} className="flex items-center gap-3">
-                  <div
-                    className={`mt-0.5 flex-shrink-0 size-6 rounded-full flex items-center justify-center ${
-                      feature.included
-                        ? "bg-[#FFF7C4] text-[#181818]"
-                        : "bg-gray-200 text-gray-400"
-                    }`}
-                  >
-                    {feature.included && <FiCheck color="#191D23" size={14} />}
-                  </div>
-                  <span
-                    className={`text-[20px] font-lato ${
-                      feature.included
-                        ? "text-[#191D23]"
-                        : "text-[#4E4E4E] line-through"
-                    }`}
-                  >
-                    {feature.label}
-                  </span>
+              <div className="mb-6">
+                <div className="text-5xl md:text-7xl font-bold text-[#191D23] mb-1 font-lato">
+                  ₹5,999
                 </div>
-              ))}
+                <div className="text-sm text-gray-600 font-lato">
+                  /Year + GST
+                </div>
+              </div>
+              <Link
+                href="/subscribe"
+                className="block w-full text-center px-6 py-3 rounded-lg bg-[#F4D300] text-[#3A3A3A] font-semibold hover:bg-[#F6DD3D] transition-colors shadow-sm mb-6 font-lato"
+              >
+                Subscribe
+              </Link>
+              <div className="space-y-3">
+                {/* Silver plan features */}
+                {[
+                  { label: "Limited Photo Upload (Up to 3)", included: true },
+                  { label: "Access to Email Address", included: true },
+                  {
+                    label: "Access to Minimum Order Quantity (MoQ)",
+                    included: true,
+                  },
+                  { label: "Video Upload (Up to 1)", included: true },
+                  { label: "Access to Phone Number", included: true },
+                  { label: "Access to Business Catalog", included: true },
+                  { label: "Unlimited Browsing", included: true },
+                  { label: "Direct Chat", included: true },
+                ].map((feature, index) => (
+                  <div key={index} className="flex items-center gap-3">
+                    <div
+                      className={`mt-0.5 flex-shrink-0 size-6 rounded-full flex items-center justify-center ${
+                        feature.included
+                          ? "bg-[#FFF7C4] text-[#181818]"
+                          : "bg-gray-200 text-gray-400"
+                      }`}
+                    >
+                      {feature.included && (
+                        <FiCheck color="#191D23" size={14} />
+                      )}
+                    </div>
+                    <span
+                      className={`text-base md:text-lg lg:text-[20px] font-lato ${
+                        feature.included
+                          ? "text-[#191D23]"
+                          : "text-[#4E4E4E] line-through"
+                      }`}
+                    >
+                      {feature.label}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>

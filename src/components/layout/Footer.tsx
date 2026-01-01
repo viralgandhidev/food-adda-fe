@@ -108,7 +108,7 @@ export default function Footer() {
               <li>
                 <Link
                   className="hover:text-white"
-                  href={isLoggedIn ? "/forms/B2B" : "/#b2b-b2c"}
+                  href="/forms/B2B"
                 >
                   B2B Marketplace
                 </Link>
@@ -116,7 +116,7 @@ export default function Footer() {
               <li>
                 <Link
                   className="hover:text-white"
-                  href={isLoggedIn ? "/forms/B2C" : "/#b2b-b2c"}
+                  href="/forms/B2C"
                 >
                   B2C Marketplace
                 </Link>
