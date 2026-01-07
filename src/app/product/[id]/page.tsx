@@ -118,7 +118,7 @@ export default function ProductDetailsPage() {
 
   return (
     <MainLayout>
-      <section className="max-w-7xl mx-auto px-6 md:px-[105px] py-12 min-h-[80vh]">
+      <section className="mx-auto px-6 md:px-[135px] py-12 min-h-[80vh]">
         <div className="flex flex-col lg:flex-row gap-10">
           {/* Image Gallery */}
           <div className="flex flex-row lg:flex-col gap-3 items-center">
@@ -143,8 +143,8 @@ export default function ProductDetailsPage() {
             ))}
           </div>
           {/* Main Image */}
-          <div className="flex-1 flex items-start justify-center min-w-[320px]">
-            <div className="relative w-[340px] h-[260px] md:w-[420px] md:h-[320px] bg-[#F5F6FA] overflow-hidden flex items-center justify-center">
+          <div className="flex items-start min-w-[620px]">
+            <div className="relative w-[640px] h-[260px] md:w-full md:h-[620px] bg-[#F5F6FA] overflow-hidden flex items-center justify-center">
               <Image
                 src={getFullImageUrl(images[selectedImg].image_url)}
                 alt={product.name}
@@ -183,7 +183,7 @@ export default function ProductDetailsPage() {
             </div>
           </div>
           {/* Product Info */}
-          <div className="flex-1 flex flex-col gap-2 max-w-xl">
+          <div className="flex-1 flex flex-col gap-2">
             {/* Category badge */}
             {product.category_name && (
               <span className="inline-block bg-gray-100 text-gray-700 text-xs font-semibold px-3 py-1 rounded-full w-fit">
