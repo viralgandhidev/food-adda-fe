@@ -213,20 +213,26 @@ export default function DashboardPage() {
         }
 
         // Fetch user's own products (if any) and keep only latest 5 on dashboard
-        try {
-          const mineRes = await api.get("/products/seller/products");
-          const items: Product[] = mineRes.data.data || [];
-          // Sort by updated_at if present (string ISO), otherwise keep as-is
-          const sorted = [...items].sort((a, b) => {
-            const aTime =
-              (a as unknown as { updated_at?: string })?.updated_at ?? "";
-            const bTime =
-              (b as unknown as { updated_at?: string })?.updated_at ?? "";
-            return bTime.localeCompare(aTime);
-          });
-          setMyProducts(sorted.slice(0, 5));
-        } catch {
-          // Ignore if not a seller or endpoint not accessible
+        // Use the working suppliers endpoint instead of /products/seller/products
+        if (user?.id) {
+          try {
+            const mineRes = await api.get(`/suppliers/${user.id}/products`);
+            const items: Product[] = mineRes.data?.data || [];
+            // Sort by updated_at if present (string ISO), otherwise keep as-is
+            const sorted = [...items].sort((a, b) => {
+              const aTime =
+                (a as unknown as { updated_at?: string })?.updated_at ?? "";
+              const bTime =
+                (b as unknown as { updated_at?: string })?.updated_at ?? "";
+              return bTime.localeCompare(aTime);
+            });
+            setMyProducts(sorted.slice(0, 5));
+          } catch (error) {
+            // Log error for debugging but don't show to user
+            console.error("Error fetching user products:", error);
+            setMyProducts([]);
+          }
+        } else {
           setMyProducts([]);
         }
 

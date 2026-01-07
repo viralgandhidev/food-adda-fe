@@ -1008,9 +1008,10 @@ export default function LandingPage() {
               Growth Solutions
             </h3>
             <p className="text-base md:text-[20px] text-[#444444] leading-relaxed mb-6 font-lato">
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus
-              vulputate, justo non tempor tincidunt, risus odio sollicitudin
-              urna, in placerat dui leo eu nisi.
+              Running a food business is tough. Growth gets stuck between
+              sourcing, hiring, marketing, and expansion decisions. Food Adda
+              brings all growth-related solutions under one platform, so food
+              entrepreneurs can focus on scaling instead of struggling.
             </p>
             <div className="space-y-4 flex gap-10">
               <div className="flex items-start gap-3">
@@ -1018,8 +1019,9 @@ export default function LandingPage() {
                   <CiCircleCheck color="#191D23" size={14} />
                 </div>
                 <p className="text-[20px] text-[#444444] font-medium font-lato">
-                  Lorem ipsum dolor sit amet, consectetur adipiscing elit.
-                  Vivamus
+                  Everything your food business needs to grow — from raw
+                  materials and packaging to marketing and hiring — all
+                  available through verified industry partners.
                 </p>
               </div>
               <div className="flex items-start gap-3">
@@ -1027,8 +1029,9 @@ export default function LandingPage() {
                   <CiCircleCheck className="text-green-600" size={14} />
                 </div>
                 <p className="text-[20px] text-[#444444] font-medium font-lato">
-                  Lorem ipsum dolor sit amet, consectetur adipiscing elit.
-                  Vivamus vulputate, justo
+                  Whether you are a cloud kitchen, café, manufacturer, or
+                  distributor, Food Adda connects you with the right people,
+                  tools, and services to move faster.
                 </p>
               </div>
             </div>
@@ -1058,9 +1061,10 @@ export default function LandingPage() {
               Hire/Recruit
             </h3>
             <p className="text-[20px] md:text-[20px] text-[#52525B] max-w-3xl mx-auto font-lato">
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus
-              vulputate, justo non tempor tincidunt, risus odio sollicitudin
-              urna, in placerat dui leo eu nisi.
+              Finding the right people is one of the biggest challenges in the
+              food business. From kitchen staff to managers and service teams,
+              Food Adda helps you connect with reliable, industry-ready talent
+              faster and easier.
             </p>
           </div>
 
@@ -1070,8 +1074,9 @@ export default function LandingPage() {
             <div className="bg-[#1C1A1A] rounded-2xl overflow-hidden shadow-lg p-4">
               <div className="text-white p-4 mb-6">
                 <p className="text-[20px] leading-relaxed font-lato">
-                  Lorem ipsum dolor sit amet, consectetur adipiscing elit.
-                  Vivamus vulputate, justo.
+                  Hire trained kitchen staff, helpers, and service professionals
+                  who understand food operations and can start delivering from
+                  day one.
                 </p>
               </div>
               <div className="relative h-[300px] bg-gray-200 rounded-2xl">
@@ -1088,8 +1093,9 @@ export default function LandingPage() {
             <div className="bg-[#1C1A1A] rounded-2xl overflow-hidden shadow-lg p-4">
               <div className="text-white p-4 mb-6">
                 <p className="text-[20px] leading-relaxed font-lato">
-                  Lorem ipsum dolor sit amet, consectetur adipiscing elit.
-                  Vivamus vulputate, justo.
+                  Post your hiring requirements and get connected with
+                  candidates who are actively looking for opportunities in the
+                  food industry.
                 </p>
               </div>
               <div className="relative h-[300px] bg-gray-200 rounded-2xl">
@@ -1106,8 +1112,9 @@ export default function LandingPage() {
             <div className="bg-[#1C1A1A] rounded-2xl overflow-hidden shadow-lg p-4">
               <div className="text-white p-4 mb-6">
                 <p className="text-[20px] leading-relaxed font-lato">
-                  Lorem ipsum dolor sit amet, consectetur adipiscing elit.
-                  Vivamus vulputate, justo.
+                  Save time and hiring costs by accessing a focused talent pool
+                  built exclusively for restaurants, cafés, cloud kitchens, and
+                  food brands.
                 </p>
               </div>
               <div className="relative h-[300px] bg-gray-200 rounded-2xl">
@@ -1228,9 +1235,10 @@ export default function LandingPage() {
               <span>Newsletters</span>
             </h3>
             <p className="text-base md:text-[20px] text-[#1C1A1A] leading-relaxed mb-6 font-lato">
-              Lorem ipsum dolor sit amet consectetur. Commodo felis odio
-              adipiscing nisi massa adipiscing ac faucibus. Montes lacus sed
-              vulputate tristique tortor tellus fermentum etiam in.
+              Food businesses grow faster when decisions are backed by the right
+              knowledge. Our blogs and newsletters break down complex industry
+              topics into simple, practical insights you can actually use in
+              your daily operations.
             </p>
             {/* Email Subscription */}
             <div className="relative mb-8 bg-white rounded-lg shadow-sm">
